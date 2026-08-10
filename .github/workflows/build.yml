@@ -1,0 +1,67 @@
+name: Build QuickFlora Print App
+
+# Produces an installable Windows build. Download it from the run's Artifacts section.
+on:
+  push:
+    branches: [main, "AB*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Show available .NET Framework targeting packs
+        shell: pwsh
+        run: |
+          $p = "C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework"
+          if (Test-Path $p) { Get-ChildItem $p | Select-Object -ExpandProperty Name } else { "none found" }
+
+      - name: Restore NuGet packages
+        shell: pwsh
+        run: |
+          if (Test-Path QuickfloraPrinting\packages.config) {
+            nuget restore QuickfloraPrinting.sln
+          } else {
+            "No packages.config - nothing to restore"
+          }
+
+      - name: Build (Release)
+        shell: pwsh
+        run: msbuild QuickfloraPrinting.sln /p:Configuration=Release /p:Platform="Any CPU" /verbosity:minimal
+
+      - name: Stamp build info
+        shell: pwsh
+        run: |
+          $exe = "QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe"
+          if (-not (Test-Path $exe)) { throw "Build produced no executable at $exe" }
+          $h = (Get-FileHash $exe -Algorithm MD5).Hash
+          $len = (Get-Item $exe).Length
+          "QuickFlora Print App" | Out-File -Encoding utf8 build-info.txt
+          "commit : ${{ github.sha }}"        | Out-File -Append -Encoding utf8 build-info.txt
+          "run    : ${{ github.run_number }}" | Out-File -Append -Encoding utf8 build-info.txt
+          "exe    : $len bytes"               | Out-File -Append -Encoding utf8 build-info.txt
+          "md5    : $h"                       | Out-File -Append -Encoding utf8 build-info.txt
+          Get-Content build-info.txt
+
+      - name: Package for install
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package | Out-Null
+          Copy-Item QuickfloraPrinting\bin\Release\* package\ -Recurse -Force
+          Copy-Item build-info.txt package\ -Force
+          if (Test-Path QuickfloraPrinting\Config.txt) { Copy-Item QuickfloraPrinting\Config.txt package\ -Force }
+          New-Item -ItemType Directory -Force -Path package\Receipts | Out-Null
+          New-Item -ItemType Directory -Force -Path package\PDF | Out-Null
+
+      - name: Upload installable build
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuickFloraPrintApp-build-${{ github.run_number }}
+          path: package/
+          retention-days: 30
