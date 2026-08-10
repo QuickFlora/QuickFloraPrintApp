@@ -1,0 +1,1464 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:tns="https://secure.quickflora.com/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:s="http://www.w3.org/2001/XMLSchema" xmlns:tm="http://microsoft.com/wsdl/mime/textMatching/" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" targetNamespace="https://secure.quickflora.com/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:types>
+    <s:schema elementFormDefault="qualified" targetNamespace="https://secure.quickflora.com/">
+      <s:element name="CheckPOSPaidOutPrintRequestststatus">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalName" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckPOSPaidOutPrintRequestststatusResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="CheckPOSPaidOutPrintRequestststatusResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckPOSPaidOutPrintRequestPrinting">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalName" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckPOSPaidOutPrintRequestPrintingResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CheckPOSPaidOutPrintRequestPrintingResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:any minOccurs="0" maxOccurs="unbounded" namespace="http://www.w3.org/2001/XMLSchema" processContents="lax" />
+                  <s:any minOccurs="1" namespace="urn:schemas-microsoft-com:xml-diffgram-v1" processContents="lax" />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GETPOSPaidOutPrintRequest">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="PaidOutId" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ShiftID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalId" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GETPOSPaidOutPrintRequestResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GETPOSPaidOutPrintRequestResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdatePOSPaidOutPrintRequest">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="slno" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdatePOSPaidOutPrintRequestResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="UpdatePOSPaidOutPrintRequestResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckPOSReturnOrderPrintRequeststatus">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalName" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckPOSReturnOrderPrintRequeststatusResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="CheckPOSReturnOrderPrintRequeststatusResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckPOSReturnOrderPrintRequestPrinting">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalName" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckPOSReturnOrderPrintRequestPrintingResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CheckPOSReturnOrderPrintRequestPrintingResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:any minOccurs="0" maxOccurs="unbounded" namespace="http://www.w3.org/2001/XMLSchema" processContents="lax" />
+                  <s:any minOccurs="1" namespace="urn:schemas-microsoft-com:xml-diffgram-v1" processContents="lax" />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GETPOSReturnOrderPrintRequestForPrinting">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="OrderNumber" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ShiftID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalId" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GETPOSReturnOrderPrintRequestForPrintingResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GETPOSReturnOrderPrintRequestForPrintingResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdatePOSReturnOrderPrintRequest">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="slno" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdatePOSReturnOrderPrintRequestResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="UpdatePOSReturnOrderPrintRequestResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckPOSShiftForPrintingstatus">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalName" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckPOSShiftForPrintingstatusResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="CheckPOSShiftForPrintingstatusResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckPOSShiftForPrinting">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalName" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckPOSShiftForPrintingResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CheckPOSShiftForPrintingResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:any minOccurs="0" maxOccurs="unbounded" namespace="http://www.w3.org/2001/XMLSchema" processContents="lax" />
+                  <s:any minOccurs="1" namespace="urn:schemas-microsoft-com:xml-diffgram-v1" processContents="lax" />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GETPOSShiftForPrinting">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ShiftID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalId" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GETPOSShiftForPrintingResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GETPOSShiftForPrintingResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdatePOSShiftForPrinting">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="slno" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdatePOSShiftForPrintingResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="UpdatePOSShiftForPrintingResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckPOSForPrintingstatus">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalName" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckPOSForPrintingstatusResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="CheckPOSForPrintingstatusResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckPOSForPrinting">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalName" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckPOSForPrintingResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CheckPOSForPrintingResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:any minOccurs="0" maxOccurs="unbounded" namespace="http://www.w3.org/2001/XMLSchema" processContents="lax" />
+                  <s:any minOccurs="1" namespace="urn:schemas-microsoft-com:xml-diffgram-v1" processContents="lax" />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdatePOSForPrinting">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="slno" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdatePOSForPrintingResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="UpdatePOSForPrintingResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="PaymentDetailsForRefund">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="OrderNumber" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="PaymentDetailsForRefundResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="PaymentDetailsForRefundResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:any minOccurs="0" maxOccurs="unbounded" namespace="http://www.w3.org/2001/XMLSchema" processContents="lax" />
+                  <s:any minOccurs="1" namespace="urn:schemas-microsoft-com:xml-diffgram-v1" processContents="lax" />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetRefundOrderDetails">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalName" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetRefundOrderDetailsResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetRefundOrderDetailsResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:any minOccurs="0" maxOccurs="unbounded" namespace="http://www.w3.org/2001/XMLSchema" processContents="lax" />
+                  <s:any minOccurs="1" namespace="urn:schemas-microsoft-com:xml-diffgram-v1" processContents="lax" />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetRefundOrderPaymentDetails">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="OrderNumber" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetRefundOrderPaymentDetailsResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetRefundOrderPaymentDetailsResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:any minOccurs="0" maxOccurs="unbounded" namespace="http://www.w3.org/2001/XMLSchema" processContents="lax" />
+                  <s:any minOccurs="1" namespace="urn:schemas-microsoft-com:xml-diffgram-v1" processContents="lax" />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckOrderForPaymentRefund">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalName" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckOrderForPaymentRefundResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="CheckOrderForPaymentRefundResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdateOrderDetailsPaymentrefund">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="OrderNumber" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="CMDStatus" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ApprovalNo" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdateOrderDetailsPaymentrefundResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="UpdateOrderDetailsPaymentrefundResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="PaymentGatewayTransaction">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="OrderNumber" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="InLineNumber" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ProcessData" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ACQRefData" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="InvoiceNo" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="Response_RefNo" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="AuthCode" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TextResponse" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="CmdStatus" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="PaymentGatewayTransactionResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="PaymentGatewayTransactionResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="PaymentGatewayTransactionRefund">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="OrderNumber" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="InLineNumber" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ProcessData" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ACQRefData" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="InvoiceNo" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="Response_RefNo" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="AuthCode" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TextResponse" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="CmdStatus" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ProcessType" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="PaymentGatewayTransactionRefundResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="PaymentGatewayTransactionRefundResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckConnection">
+        <s:complexType />
+      </s:element>
+      <s:element name="CheckConnectionResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="CheckConnectionResult" type="s:dateTime" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckOrderForPayment">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalName" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckOrderForPaymentResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="CheckOrderForPaymentResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetOrderDetails">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalName" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetOrderDetailsResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetOrderDetailsResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:any minOccurs="0" maxOccurs="unbounded" namespace="http://www.w3.org/2001/XMLSchema" processContents="lax" />
+                  <s:any minOccurs="1" namespace="urn:schemas-microsoft-com:xml-diffgram-v1" processContents="lax" />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdateOrderDetails">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="OrderNumber" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="CMDStatus" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ApprovalNo" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdateOrderDetailsResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="UpdateOrderDetailsResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdateOrderHeaderForPayment">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="OrderNumber" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdateOrderHeaderForPaymentResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="UpdateOrderHeaderForPaymentResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ReceiptPDFPrintData">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="OrdNumber" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ReceiptPDFPrintDataResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ReceiptPDFPrintDataResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:any minOccurs="0" maxOccurs="unbounded" namespace="http://www.w3.org/2001/XMLSchema" processContents="lax" />
+                  <s:any minOccurs="1" namespace="urn:schemas-microsoft-com:xml-diffgram-v1" processContents="lax" />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ReceiptPDFPrintDataPickscreen">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="OrdNumber" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalName" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="slno" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ReceiptPDFPrintDataPickscreenResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ReceiptPDFPrintDataPickscreenResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:any minOccurs="0" maxOccurs="unbounded" namespace="http://www.w3.org/2001/XMLSchema" processContents="lax" />
+                  <s:any minOccurs="1" namespace="urn:schemas-microsoft-com:xml-diffgram-v1" processContents="lax" />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ReceiptPrintData">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="OrderNumber" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ReceiptPrintDataResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="ReceiptPrintDataResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+    </s:schema>
+  </wsdl:types>
+  <wsdl:message name="CheckPOSPaidOutPrintRequestststatusSoapIn">
+    <wsdl:part name="parameters" element="tns:CheckPOSPaidOutPrintRequestststatus" />
+  </wsdl:message>
+  <wsdl:message name="CheckPOSPaidOutPrintRequestststatusSoapOut">
+    <wsdl:part name="parameters" element="tns:CheckPOSPaidOutPrintRequestststatusResponse" />
+  </wsdl:message>
+  <wsdl:message name="CheckPOSPaidOutPrintRequestPrintingSoapIn">
+    <wsdl:part name="parameters" element="tns:CheckPOSPaidOutPrintRequestPrinting" />
+  </wsdl:message>
+  <wsdl:message name="CheckPOSPaidOutPrintRequestPrintingSoapOut">
+    <wsdl:part name="parameters" element="tns:CheckPOSPaidOutPrintRequestPrintingResponse" />
+  </wsdl:message>
+  <wsdl:message name="GETPOSPaidOutPrintRequestSoapIn">
+    <wsdl:part name="parameters" element="tns:GETPOSPaidOutPrintRequest" />
+  </wsdl:message>
+  <wsdl:message name="GETPOSPaidOutPrintRequestSoapOut">
+    <wsdl:part name="parameters" element="tns:GETPOSPaidOutPrintRequestResponse" />
+  </wsdl:message>
+  <wsdl:message name="UpdatePOSPaidOutPrintRequestSoapIn">
+    <wsdl:part name="parameters" element="tns:UpdatePOSPaidOutPrintRequest" />
+  </wsdl:message>
+  <wsdl:message name="UpdatePOSPaidOutPrintRequestSoapOut">
+    <wsdl:part name="parameters" element="tns:UpdatePOSPaidOutPrintRequestResponse" />
+  </wsdl:message>
+  <wsdl:message name="CheckPOSReturnOrderPrintRequeststatusSoapIn">
+    <wsdl:part name="parameters" element="tns:CheckPOSReturnOrderPrintRequeststatus" />
+  </wsdl:message>
+  <wsdl:message name="CheckPOSReturnOrderPrintRequeststatusSoapOut">
+    <wsdl:part name="parameters" element="tns:CheckPOSReturnOrderPrintRequeststatusResponse" />
+  </wsdl:message>
+  <wsdl:message name="CheckPOSReturnOrderPrintRequestPrintingSoapIn">
+    <wsdl:part name="parameters" element="tns:CheckPOSReturnOrderPrintRequestPrinting" />
+  </wsdl:message>
+  <wsdl:message name="CheckPOSReturnOrderPrintRequestPrintingSoapOut">
+    <wsdl:part name="parameters" element="tns:CheckPOSReturnOrderPrintRequestPrintingResponse" />
+  </wsdl:message>
+  <wsdl:message name="GETPOSReturnOrderPrintRequestForPrintingSoapIn">
+    <wsdl:part name="parameters" element="tns:GETPOSReturnOrderPrintRequestForPrinting" />
+  </wsdl:message>
+  <wsdl:message name="GETPOSReturnOrderPrintRequestForPrintingSoapOut">
+    <wsdl:part name="parameters" element="tns:GETPOSReturnOrderPrintRequestForPrintingResponse" />
+  </wsdl:message>
+  <wsdl:message name="UpdatePOSReturnOrderPrintRequestSoapIn">
+    <wsdl:part name="parameters" element="tns:UpdatePOSReturnOrderPrintRequest" />
+  </wsdl:message>
+  <wsdl:message name="UpdatePOSReturnOrderPrintRequestSoapOut">
+    <wsdl:part name="parameters" element="tns:UpdatePOSReturnOrderPrintRequestResponse" />
+  </wsdl:message>
+  <wsdl:message name="CheckPOSShiftForPrintingstatusSoapIn">
+    <wsdl:part name="parameters" element="tns:CheckPOSShiftForPrintingstatus" />
+  </wsdl:message>
+  <wsdl:message name="CheckPOSShiftForPrintingstatusSoapOut">
+    <wsdl:part name="parameters" element="tns:CheckPOSShiftForPrintingstatusResponse" />
+  </wsdl:message>
+  <wsdl:message name="CheckPOSShiftForPrintingSoapIn">
+    <wsdl:part name="parameters" element="tns:CheckPOSShiftForPrinting" />
+  </wsdl:message>
+  <wsdl:message name="CheckPOSShiftForPrintingSoapOut">
+    <wsdl:part name="parameters" element="tns:CheckPOSShiftForPrintingResponse" />
+  </wsdl:message>
+  <wsdl:message name="GETPOSShiftForPrintingSoapIn">
+    <wsdl:part name="parameters" element="tns:GETPOSShiftForPrinting" />
+  </wsdl:message>
+  <wsdl:message name="GETPOSShiftForPrintingSoapOut">
+    <wsdl:part name="parameters" element="tns:GETPOSShiftForPrintingResponse" />
+  </wsdl:message>
+  <wsdl:message name="UpdatePOSShiftForPrintingSoapIn">
+    <wsdl:part name="parameters" element="tns:UpdatePOSShiftForPrinting" />
+  </wsdl:message>
+  <wsdl:message name="UpdatePOSShiftForPrintingSoapOut">
+    <wsdl:part name="parameters" element="tns:UpdatePOSShiftForPrintingResponse" />
+  </wsdl:message>
+  <wsdl:message name="CheckPOSForPrintingstatusSoapIn">
+    <wsdl:part name="parameters" element="tns:CheckPOSForPrintingstatus" />
+  </wsdl:message>
+  <wsdl:message name="CheckPOSForPrintingstatusSoapOut">
+    <wsdl:part name="parameters" element="tns:CheckPOSForPrintingstatusResponse" />
+  </wsdl:message>
+  <wsdl:message name="CheckPOSForPrintingSoapIn">
+    <wsdl:part name="parameters" element="tns:CheckPOSForPrinting" />
+  </wsdl:message>
+  <wsdl:message name="CheckPOSForPrintingSoapOut">
+    <wsdl:part name="parameters" element="tns:CheckPOSForPrintingResponse" />
+  </wsdl:message>
+  <wsdl:message name="UpdatePOSForPrintingSoapIn">
+    <wsdl:part name="parameters" element="tns:UpdatePOSForPrinting" />
+  </wsdl:message>
+  <wsdl:message name="UpdatePOSForPrintingSoapOut">
+    <wsdl:part name="parameters" element="tns:UpdatePOSForPrintingResponse" />
+  </wsdl:message>
+  <wsdl:message name="PaymentDetailsForRefundSoapIn">
+    <wsdl:part name="parameters" element="tns:PaymentDetailsForRefund" />
+  </wsdl:message>
+  <wsdl:message name="PaymentDetailsForRefundSoapOut">
+    <wsdl:part name="parameters" element="tns:PaymentDetailsForRefundResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetRefundOrderDetailsSoapIn">
+    <wsdl:part name="parameters" element="tns:GetRefundOrderDetails" />
+  </wsdl:message>
+  <wsdl:message name="GetRefundOrderDetailsSoapOut">
+    <wsdl:part name="parameters" element="tns:GetRefundOrderDetailsResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetRefundOrderPaymentDetailsSoapIn">
+    <wsdl:part name="parameters" element="tns:GetRefundOrderPaymentDetails" />
+  </wsdl:message>
+  <wsdl:message name="GetRefundOrderPaymentDetailsSoapOut">
+    <wsdl:part name="parameters" element="tns:GetRefundOrderPaymentDetailsResponse" />
+  </wsdl:message>
+  <wsdl:message name="CheckOrderForPaymentRefundSoapIn">
+    <wsdl:part name="parameters" element="tns:CheckOrderForPaymentRefund" />
+  </wsdl:message>
+  <wsdl:message name="CheckOrderForPaymentRefundSoapOut">
+    <wsdl:part name="parameters" element="tns:CheckOrderForPaymentRefundResponse" />
+  </wsdl:message>
+  <wsdl:message name="UpdateOrderDetailsPaymentrefundSoapIn">
+    <wsdl:part name="parameters" element="tns:UpdateOrderDetailsPaymentrefund" />
+  </wsdl:message>
+  <wsdl:message name="UpdateOrderDetailsPaymentrefundSoapOut">
+    <wsdl:part name="parameters" element="tns:UpdateOrderDetailsPaymentrefundResponse" />
+  </wsdl:message>
+  <wsdl:message name="PaymentGatewayTransactionSoapIn">
+    <wsdl:part name="parameters" element="tns:PaymentGatewayTransaction" />
+  </wsdl:message>
+  <wsdl:message name="PaymentGatewayTransactionSoapOut">
+    <wsdl:part name="parameters" element="tns:PaymentGatewayTransactionResponse" />
+  </wsdl:message>
+  <wsdl:message name="PaymentGatewayTransactionRefundSoapIn">
+    <wsdl:part name="parameters" element="tns:PaymentGatewayTransactionRefund" />
+  </wsdl:message>
+  <wsdl:message name="PaymentGatewayTransactionRefundSoapOut">
+    <wsdl:part name="parameters" element="tns:PaymentGatewayTransactionRefundResponse" />
+  </wsdl:message>
+  <wsdl:message name="CheckConnectionSoapIn">
+    <wsdl:part name="parameters" element="tns:CheckConnection" />
+  </wsdl:message>
+  <wsdl:message name="CheckConnectionSoapOut">
+    <wsdl:part name="parameters" element="tns:CheckConnectionResponse" />
+  </wsdl:message>
+  <wsdl:message name="CheckOrderForPaymentSoapIn">
+    <wsdl:part name="parameters" element="tns:CheckOrderForPayment" />
+  </wsdl:message>
+  <wsdl:message name="CheckOrderForPaymentSoapOut">
+    <wsdl:part name="parameters" element="tns:CheckOrderForPaymentResponse" />
+  </wsdl:message>
+  <wsdl:message name="GetOrderDetailsSoapIn">
+    <wsdl:part name="parameters" element="tns:GetOrderDetails" />
+  </wsdl:message>
+  <wsdl:message name="GetOrderDetailsSoapOut">
+    <wsdl:part name="parameters" element="tns:GetOrderDetailsResponse" />
+  </wsdl:message>
+  <wsdl:message name="UpdateOrderDetailsSoapIn">
+    <wsdl:part name="parameters" element="tns:UpdateOrderDetails" />
+  </wsdl:message>
+  <wsdl:message name="UpdateOrderDetailsSoapOut">
+    <wsdl:part name="parameters" element="tns:UpdateOrderDetailsResponse" />
+  </wsdl:message>
+  <wsdl:message name="UpdateOrderHeaderForPaymentSoapIn">
+    <wsdl:part name="parameters" element="tns:UpdateOrderHeaderForPayment" />
+  </wsdl:message>
+  <wsdl:message name="UpdateOrderHeaderForPaymentSoapOut">
+    <wsdl:part name="parameters" element="tns:UpdateOrderHeaderForPaymentResponse" />
+  </wsdl:message>
+  <wsdl:message name="ReceiptPDFPrintDataSoapIn">
+    <wsdl:part name="parameters" element="tns:ReceiptPDFPrintData" />
+  </wsdl:message>
+  <wsdl:message name="ReceiptPDFPrintDataSoapOut">
+    <wsdl:part name="parameters" element="tns:ReceiptPDFPrintDataResponse" />
+  </wsdl:message>
+  <wsdl:message name="ReceiptPDFPrintDataPickscreenSoapIn">
+    <wsdl:part name="parameters" element="tns:ReceiptPDFPrintDataPickscreen" />
+  </wsdl:message>
+  <wsdl:message name="ReceiptPDFPrintDataPickscreenSoapOut">
+    <wsdl:part name="parameters" element="tns:ReceiptPDFPrintDataPickscreenResponse" />
+  </wsdl:message>
+  <wsdl:message name="ReceiptPrintDataSoapIn">
+    <wsdl:part name="parameters" element="tns:ReceiptPrintData" />
+  </wsdl:message>
+  <wsdl:message name="ReceiptPrintDataSoapOut">
+    <wsdl:part name="parameters" element="tns:ReceiptPrintDataResponse" />
+  </wsdl:message>
+  <wsdl:portType name="ServiceSoap">
+    <wsdl:operation name="CheckPOSPaidOutPrintRequestststatus">
+      <wsdl:input message="tns:CheckPOSPaidOutPrintRequestststatusSoapIn" />
+      <wsdl:output message="tns:CheckPOSPaidOutPrintRequestststatusSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSPaidOutPrintRequestPrinting">
+      <wsdl:input message="tns:CheckPOSPaidOutPrintRequestPrintingSoapIn" />
+      <wsdl:output message="tns:CheckPOSPaidOutPrintRequestPrintingSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GETPOSPaidOutPrintRequest">
+      <wsdl:input message="tns:GETPOSPaidOutPrintRequestSoapIn" />
+      <wsdl:output message="tns:GETPOSPaidOutPrintRequestSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="UpdatePOSPaidOutPrintRequest">
+      <wsdl:input message="tns:UpdatePOSPaidOutPrintRequestSoapIn" />
+      <wsdl:output message="tns:UpdatePOSPaidOutPrintRequestSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSReturnOrderPrintRequeststatus">
+      <wsdl:input message="tns:CheckPOSReturnOrderPrintRequeststatusSoapIn" />
+      <wsdl:output message="tns:CheckPOSReturnOrderPrintRequeststatusSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSReturnOrderPrintRequestPrinting">
+      <wsdl:input message="tns:CheckPOSReturnOrderPrintRequestPrintingSoapIn" />
+      <wsdl:output message="tns:CheckPOSReturnOrderPrintRequestPrintingSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GETPOSReturnOrderPrintRequestForPrinting">
+      <wsdl:input message="tns:GETPOSReturnOrderPrintRequestForPrintingSoapIn" />
+      <wsdl:output message="tns:GETPOSReturnOrderPrintRequestForPrintingSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="UpdatePOSReturnOrderPrintRequest">
+      <wsdl:input message="tns:UpdatePOSReturnOrderPrintRequestSoapIn" />
+      <wsdl:output message="tns:UpdatePOSReturnOrderPrintRequestSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSShiftForPrintingstatus">
+      <wsdl:input message="tns:CheckPOSShiftForPrintingstatusSoapIn" />
+      <wsdl:output message="tns:CheckPOSShiftForPrintingstatusSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSShiftForPrinting">
+      <wsdl:input message="tns:CheckPOSShiftForPrintingSoapIn" />
+      <wsdl:output message="tns:CheckPOSShiftForPrintingSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GETPOSShiftForPrinting">
+      <wsdl:input message="tns:GETPOSShiftForPrintingSoapIn" />
+      <wsdl:output message="tns:GETPOSShiftForPrintingSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="UpdatePOSShiftForPrinting">
+      <wsdl:input message="tns:UpdatePOSShiftForPrintingSoapIn" />
+      <wsdl:output message="tns:UpdatePOSShiftForPrintingSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSForPrintingstatus">
+      <wsdl:input message="tns:CheckPOSForPrintingstatusSoapIn" />
+      <wsdl:output message="tns:CheckPOSForPrintingstatusSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSForPrinting">
+      <wsdl:input message="tns:CheckPOSForPrintingSoapIn" />
+      <wsdl:output message="tns:CheckPOSForPrintingSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="UpdatePOSForPrinting">
+      <wsdl:input message="tns:UpdatePOSForPrintingSoapIn" />
+      <wsdl:output message="tns:UpdatePOSForPrintingSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="PaymentDetailsForRefund">
+      <wsdl:input message="tns:PaymentDetailsForRefundSoapIn" />
+      <wsdl:output message="tns:PaymentDetailsForRefundSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetRefundOrderDetails">
+      <wsdl:input message="tns:GetRefundOrderDetailsSoapIn" />
+      <wsdl:output message="tns:GetRefundOrderDetailsSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetRefundOrderPaymentDetails">
+      <wsdl:input message="tns:GetRefundOrderPaymentDetailsSoapIn" />
+      <wsdl:output message="tns:GetRefundOrderPaymentDetailsSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="CheckOrderForPaymentRefund">
+      <wsdl:input message="tns:CheckOrderForPaymentRefundSoapIn" />
+      <wsdl:output message="tns:CheckOrderForPaymentRefundSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="UpdateOrderDetailsPaymentrefund">
+      <wsdl:input message="tns:UpdateOrderDetailsPaymentrefundSoapIn" />
+      <wsdl:output message="tns:UpdateOrderDetailsPaymentrefundSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="PaymentGatewayTransaction">
+      <wsdl:input message="tns:PaymentGatewayTransactionSoapIn" />
+      <wsdl:output message="tns:PaymentGatewayTransactionSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="PaymentGatewayTransactionRefund">
+      <wsdl:input message="tns:PaymentGatewayTransactionRefundSoapIn" />
+      <wsdl:output message="tns:PaymentGatewayTransactionRefundSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="CheckConnection">
+      <wsdl:input message="tns:CheckConnectionSoapIn" />
+      <wsdl:output message="tns:CheckConnectionSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="CheckOrderForPayment">
+      <wsdl:input message="tns:CheckOrderForPaymentSoapIn" />
+      <wsdl:output message="tns:CheckOrderForPaymentSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="GetOrderDetails">
+      <wsdl:input message="tns:GetOrderDetailsSoapIn" />
+      <wsdl:output message="tns:GetOrderDetailsSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="UpdateOrderDetails">
+      <wsdl:input message="tns:UpdateOrderDetailsSoapIn" />
+      <wsdl:output message="tns:UpdateOrderDetailsSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="UpdateOrderHeaderForPayment">
+      <wsdl:input message="tns:UpdateOrderHeaderForPaymentSoapIn" />
+      <wsdl:output message="tns:UpdateOrderHeaderForPaymentSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ReceiptPDFPrintData">
+      <wsdl:input message="tns:ReceiptPDFPrintDataSoapIn" />
+      <wsdl:output message="tns:ReceiptPDFPrintDataSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ReceiptPDFPrintDataPickscreen">
+      <wsdl:input message="tns:ReceiptPDFPrintDataPickscreenSoapIn" />
+      <wsdl:output message="tns:ReceiptPDFPrintDataPickscreenSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="ReceiptPrintData">
+      <wsdl:input message="tns:ReceiptPrintDataSoapIn" />
+      <wsdl:output message="tns:ReceiptPrintDataSoapOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="ServiceSoap" type="tns:ServiceSoap">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="CheckPOSPaidOutPrintRequestststatus">
+      <soap:operation soapAction="https://secure.quickflora.com/CheckPOSPaidOutPrintRequestststatus" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSPaidOutPrintRequestPrinting">
+      <soap:operation soapAction="https://secure.quickflora.com/CheckPOSPaidOutPrintRequestPrinting" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GETPOSPaidOutPrintRequest">
+      <soap:operation soapAction="https://secure.quickflora.com/GETPOSPaidOutPrintRequest" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdatePOSPaidOutPrintRequest">
+      <soap:operation soapAction="https://secure.quickflora.com/UpdatePOSPaidOutPrintRequest" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSReturnOrderPrintRequeststatus">
+      <soap:operation soapAction="https://secure.quickflora.com/CheckPOSReturnOrderPrintRequeststatus" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSReturnOrderPrintRequestPrinting">
+      <soap:operation soapAction="https://secure.quickflora.com/CheckPOSReturnOrderPrintRequestPrinting" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GETPOSReturnOrderPrintRequestForPrinting">
+      <soap:operation soapAction="https://secure.quickflora.com/GETPOSReturnOrderPrintRequestForPrinting" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdatePOSReturnOrderPrintRequest">
+      <soap:operation soapAction="https://secure.quickflora.com/UpdatePOSReturnOrderPrintRequest" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSShiftForPrintingstatus">
+      <soap:operation soapAction="https://secure.quickflora.com/CheckPOSShiftForPrintingstatus" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSShiftForPrinting">
+      <soap:operation soapAction="https://secure.quickflora.com/CheckPOSShiftForPrinting" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GETPOSShiftForPrinting">
+      <soap:operation soapAction="https://secure.quickflora.com/GETPOSShiftForPrinting" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdatePOSShiftForPrinting">
+      <soap:operation soapAction="https://secure.quickflora.com/UpdatePOSShiftForPrinting" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSForPrintingstatus">
+      <soap:operation soapAction="https://secure.quickflora.com/CheckPOSForPrintingstatus" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSForPrinting">
+      <soap:operation soapAction="https://secure.quickflora.com/CheckPOSForPrinting" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdatePOSForPrinting">
+      <soap:operation soapAction="https://secure.quickflora.com/UpdatePOSForPrinting" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="PaymentDetailsForRefund">
+      <soap:operation soapAction="https://secure.quickflora.com/PaymentDetailsForRefund" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRefundOrderDetails">
+      <soap:operation soapAction="https://secure.quickflora.com/GetRefundOrderDetails" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRefundOrderPaymentDetails">
+      <soap:operation soapAction="https://secure.quickflora.com/GetRefundOrderPaymentDetails" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckOrderForPaymentRefund">
+      <soap:operation soapAction="https://secure.quickflora.com/CheckOrderForPaymentRefund" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdateOrderDetailsPaymentrefund">
+      <soap:operation soapAction="https://secure.quickflora.com/UpdateOrderDetailsPaymentrefund" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="PaymentGatewayTransaction">
+      <soap:operation soapAction="https://secure.quickflora.com/PaymentGatewayTransaction" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="PaymentGatewayTransactionRefund">
+      <soap:operation soapAction="https://secure.quickflora.com/PaymentGatewayTransactionRefund" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckConnection">
+      <soap:operation soapAction="https://secure.quickflora.com/CheckConnection" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckOrderForPayment">
+      <soap:operation soapAction="https://secure.quickflora.com/CheckOrderForPayment" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetOrderDetails">
+      <soap:operation soapAction="https://secure.quickflora.com/GetOrderDetails" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdateOrderDetails">
+      <soap:operation soapAction="https://secure.quickflora.com/UpdateOrderDetails" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdateOrderHeaderForPayment">
+      <soap:operation soapAction="https://secure.quickflora.com/UpdateOrderHeaderForPayment" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ReceiptPDFPrintData">
+      <soap:operation soapAction="https://secure.quickflora.com/ReceiptPDFPrintData" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ReceiptPDFPrintDataPickscreen">
+      <soap:operation soapAction="https://secure.quickflora.com/ReceiptPDFPrintDataPickscreen" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ReceiptPrintData">
+      <soap:operation soapAction="https://secure.quickflora.com/ReceiptPrintData" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="ServiceSoap12" type="tns:ServiceSoap">
+    <soap12:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="CheckPOSPaidOutPrintRequestststatus">
+      <soap12:operation soapAction="https://secure.quickflora.com/CheckPOSPaidOutPrintRequestststatus" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSPaidOutPrintRequestPrinting">
+      <soap12:operation soapAction="https://secure.quickflora.com/CheckPOSPaidOutPrintRequestPrinting" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GETPOSPaidOutPrintRequest">
+      <soap12:operation soapAction="https://secure.quickflora.com/GETPOSPaidOutPrintRequest" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdatePOSPaidOutPrintRequest">
+      <soap12:operation soapAction="https://secure.quickflora.com/UpdatePOSPaidOutPrintRequest" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSReturnOrderPrintRequeststatus">
+      <soap12:operation soapAction="https://secure.quickflora.com/CheckPOSReturnOrderPrintRequeststatus" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSReturnOrderPrintRequestPrinting">
+      <soap12:operation soapAction="https://secure.quickflora.com/CheckPOSReturnOrderPrintRequestPrinting" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GETPOSReturnOrderPrintRequestForPrinting">
+      <soap12:operation soapAction="https://secure.quickflora.com/GETPOSReturnOrderPrintRequestForPrinting" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdatePOSReturnOrderPrintRequest">
+      <soap12:operation soapAction="https://secure.quickflora.com/UpdatePOSReturnOrderPrintRequest" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSShiftForPrintingstatus">
+      <soap12:operation soapAction="https://secure.quickflora.com/CheckPOSShiftForPrintingstatus" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSShiftForPrinting">
+      <soap12:operation soapAction="https://secure.quickflora.com/CheckPOSShiftForPrinting" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GETPOSShiftForPrinting">
+      <soap12:operation soapAction="https://secure.quickflora.com/GETPOSShiftForPrinting" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdatePOSShiftForPrinting">
+      <soap12:operation soapAction="https://secure.quickflora.com/UpdatePOSShiftForPrinting" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSForPrintingstatus">
+      <soap12:operation soapAction="https://secure.quickflora.com/CheckPOSForPrintingstatus" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSForPrinting">
+      <soap12:operation soapAction="https://secure.quickflora.com/CheckPOSForPrinting" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdatePOSForPrinting">
+      <soap12:operation soapAction="https://secure.quickflora.com/UpdatePOSForPrinting" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="PaymentDetailsForRefund">
+      <soap12:operation soapAction="https://secure.quickflora.com/PaymentDetailsForRefund" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRefundOrderDetails">
+      <soap12:operation soapAction="https://secure.quickflora.com/GetRefundOrderDetails" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetRefundOrderPaymentDetails">
+      <soap12:operation soapAction="https://secure.quickflora.com/GetRefundOrderPaymentDetails" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckOrderForPaymentRefund">
+      <soap12:operation soapAction="https://secure.quickflora.com/CheckOrderForPaymentRefund" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdateOrderDetailsPaymentrefund">
+      <soap12:operation soapAction="https://secure.quickflora.com/UpdateOrderDetailsPaymentrefund" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="PaymentGatewayTransaction">
+      <soap12:operation soapAction="https://secure.quickflora.com/PaymentGatewayTransaction" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="PaymentGatewayTransactionRefund">
+      <soap12:operation soapAction="https://secure.quickflora.com/PaymentGatewayTransactionRefund" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckConnection">
+      <soap12:operation soapAction="https://secure.quickflora.com/CheckConnection" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckOrderForPayment">
+      <soap12:operation soapAction="https://secure.quickflora.com/CheckOrderForPayment" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="GetOrderDetails">
+      <soap12:operation soapAction="https://secure.quickflora.com/GetOrderDetails" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdateOrderDetails">
+      <soap12:operation soapAction="https://secure.quickflora.com/UpdateOrderDetails" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdateOrderHeaderForPayment">
+      <soap12:operation soapAction="https://secure.quickflora.com/UpdateOrderHeaderForPayment" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ReceiptPDFPrintData">
+      <soap12:operation soapAction="https://secure.quickflora.com/ReceiptPDFPrintData" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ReceiptPDFPrintDataPickscreen">
+      <soap12:operation soapAction="https://secure.quickflora.com/ReceiptPDFPrintDataPickscreen" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="ReceiptPrintData">
+      <soap12:operation soapAction="https://secure.quickflora.com/ReceiptPrintData" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="Service">
+    <wsdl:port name="ServiceSoap" binding="tns:ServiceSoap">
+      <soap:address location="https://secure.quickflora.com/QFNEWPOSPRINTWS/service.asmx" />
+    </wsdl:port>
+    <wsdl:port name="ServiceSoap12" binding="tns:ServiceSoap12">
+      <soap12:address location="https://secure.quickflora.com/QFNEWPOSPRINTWS/service.asmx" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

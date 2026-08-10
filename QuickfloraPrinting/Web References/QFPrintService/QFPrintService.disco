@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<discovery xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.xmlsoap.org/disco/">
+  <contractRef ref="https://secure.quickflora.com/NewQFPrintWebService/QFPrintService.asmx?wsdl" docRef="https://secure.quickflora.com/NewQFPrintWebService/QFPrintService.asmx" xmlns="http://schemas.xmlsoap.org/disco/scl/" />
+  <soap address="https://secure.quickflora.com/NewQFPrintWebService/QFPrintService.asmx" xmlns:q1="https://secure.quickflora.com/" binding="q1:QFPrintServiceSoap" xmlns="http://schemas.xmlsoap.org/disco/soap/" />
+  <soap address="https://secure.quickflora.com/NewQFPrintWebService/QFPrintService.asmx" xmlns:q2="https://secure.quickflora.com/" binding="q2:QFPrintServiceSoap12" xmlns="http://schemas.xmlsoap.org/disco/soap/" />
+</discovery>

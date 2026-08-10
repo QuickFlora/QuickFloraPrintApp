@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:tm="http://microsoft.com/wsdl/mime/textMatching/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:tns="https://secure.quickflora.com/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:s="http://www.w3.org/2001/XMLSchema" xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" targetNamespace="https://secure.quickflora.com/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:types>
+    <s:schema elementFormDefault="qualified" targetNamespace="https://secure.quickflora.com/">
+      <s:element name="InsertMacRequest">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="Token" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="MAC" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="InsertMacRequestResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="InsertMacRequestResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="InsertErrorDetails">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalName" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="Order" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="ErrorsDetails" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="Details" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="InsertErrorDetailsResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="InsertErrorDetailsResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="PingPOSForPrinting">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalName" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="PingPOSForPrintingResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="PingPOSForPrintingResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckPOSForPrinting">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="TerminalName" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="CheckPOSForPrintingResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CheckPOSForPrintingResult">
+              <s:complexType>
+                <s:sequence>
+                  <s:any minOccurs="0" maxOccurs="unbounded" namespace="http://www.w3.org/2001/XMLSchema" processContents="lax" />
+                  <s:any minOccurs="1" namespace="urn:schemas-microsoft-com:xml-diffgram-v1" processContents="lax" />
+                </s:sequence>
+              </s:complexType>
+            </s:element>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdateReadPOSForPrinting">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="slno" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdateReadPOSForPrintingResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="UpdateReadPOSForPrintingResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdatePOSForPrinting">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CompanyID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DivisionID" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="DepartmentID" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="slno" type="s:int" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="UpdatePOSForPrintingResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="UpdatePOSForPrintingResult" type="s:boolean" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+    </s:schema>
+  </wsdl:types>
+  <wsdl:message name="InsertMacRequestSoapIn">
+    <wsdl:part name="parameters" element="tns:InsertMacRequest" />
+  </wsdl:message>
+  <wsdl:message name="InsertMacRequestSoapOut">
+    <wsdl:part name="parameters" element="tns:InsertMacRequestResponse" />
+  </wsdl:message>
+  <wsdl:message name="InsertErrorDetailsSoapIn">
+    <wsdl:part name="parameters" element="tns:InsertErrorDetails" />
+  </wsdl:message>
+  <wsdl:message name="InsertErrorDetailsSoapOut">
+    <wsdl:part name="parameters" element="tns:InsertErrorDetailsResponse" />
+  </wsdl:message>
+  <wsdl:message name="PingPOSForPrintingSoapIn">
+    <wsdl:part name="parameters" element="tns:PingPOSForPrinting" />
+  </wsdl:message>
+  <wsdl:message name="PingPOSForPrintingSoapOut">
+    <wsdl:part name="parameters" element="tns:PingPOSForPrintingResponse" />
+  </wsdl:message>
+  <wsdl:message name="CheckPOSForPrintingSoapIn">
+    <wsdl:part name="parameters" element="tns:CheckPOSForPrinting" />
+  </wsdl:message>
+  <wsdl:message name="CheckPOSForPrintingSoapOut">
+    <wsdl:part name="parameters" element="tns:CheckPOSForPrintingResponse" />
+  </wsdl:message>
+  <wsdl:message name="UpdateReadPOSForPrintingSoapIn">
+    <wsdl:part name="parameters" element="tns:UpdateReadPOSForPrinting" />
+  </wsdl:message>
+  <wsdl:message name="UpdateReadPOSForPrintingSoapOut">
+    <wsdl:part name="parameters" element="tns:UpdateReadPOSForPrintingResponse" />
+  </wsdl:message>
+  <wsdl:message name="UpdatePOSForPrintingSoapIn">
+    <wsdl:part name="parameters" element="tns:UpdatePOSForPrinting" />
+  </wsdl:message>
+  <wsdl:message name="UpdatePOSForPrintingSoapOut">
+    <wsdl:part name="parameters" element="tns:UpdatePOSForPrintingResponse" />
+  </wsdl:message>
+  <wsdl:portType name="QFPrintServiceSoap">
+    <wsdl:operation name="InsertMacRequest">
+      <wsdl:input message="tns:InsertMacRequestSoapIn" />
+      <wsdl:output message="tns:InsertMacRequestSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="InsertErrorDetails">
+      <wsdl:input message="tns:InsertErrorDetailsSoapIn" />
+      <wsdl:output message="tns:InsertErrorDetailsSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="PingPOSForPrinting">
+      <wsdl:input message="tns:PingPOSForPrintingSoapIn" />
+      <wsdl:output message="tns:PingPOSForPrintingSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSForPrinting">
+      <wsdl:input message="tns:CheckPOSForPrintingSoapIn" />
+      <wsdl:output message="tns:CheckPOSForPrintingSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="UpdateReadPOSForPrinting">
+      <wsdl:input message="tns:UpdateReadPOSForPrintingSoapIn" />
+      <wsdl:output message="tns:UpdateReadPOSForPrintingSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="UpdatePOSForPrinting">
+      <wsdl:input message="tns:UpdatePOSForPrintingSoapIn" />
+      <wsdl:output message="tns:UpdatePOSForPrintingSoapOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="QFPrintServiceSoap" type="tns:QFPrintServiceSoap">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="InsertMacRequest">
+      <soap:operation soapAction="https://secure.quickflora.com/InsertMacRequest" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="InsertErrorDetails">
+      <soap:operation soapAction="https://secure.quickflora.com/InsertErrorDetails" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="PingPOSForPrinting">
+      <soap:operation soapAction="https://secure.quickflora.com/PingPOSForPrinting" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSForPrinting">
+      <soap:operation soapAction="https://secure.quickflora.com/CheckPOSForPrinting" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdateReadPOSForPrinting">
+      <soap:operation soapAction="https://secure.quickflora.com/UpdateReadPOSForPrinting" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdatePOSForPrinting">
+      <soap:operation soapAction="https://secure.quickflora.com/UpdatePOSForPrinting" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="QFPrintServiceSoap12" type="tns:QFPrintServiceSoap">
+    <soap12:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="InsertMacRequest">
+      <soap12:operation soapAction="https://secure.quickflora.com/InsertMacRequest" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="InsertErrorDetails">
+      <soap12:operation soapAction="https://secure.quickflora.com/InsertErrorDetails" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="PingPOSForPrinting">
+      <soap12:operation soapAction="https://secure.quickflora.com/PingPOSForPrinting" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="CheckPOSForPrinting">
+      <soap12:operation soapAction="https://secure.quickflora.com/CheckPOSForPrinting" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdateReadPOSForPrinting">
+      <soap12:operation soapAction="https://secure.quickflora.com/UpdateReadPOSForPrinting" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="UpdatePOSForPrinting">
+      <soap12:operation soapAction="https://secure.quickflora.com/UpdatePOSForPrinting" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="QFPrintService">
+    <wsdl:port name="QFPrintServiceSoap" binding="tns:QFPrintServiceSoap">
+      <soap:address location="https://secure.quickflora.com/NewQFPrintWebService/QFPrintService.asmx" />
+    </wsdl:port>
+    <wsdl:port name="QFPrintServiceSoap12" binding="tns:QFPrintServiceSoap12">
+      <soap12:address location="https://secure.quickflora.com/NewQFPrintWebService/QFPrintService.asmx" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

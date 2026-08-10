@@ -1,0 +1,8 @@
+# Visual Studio local state
+.vs/
+*.suo
+*.user
+
+# NOTE: bin/ and obj/ are deliberately NOT ignored in the baseline commit.
+# The compiled QuickfloraPrinting.exe is kept so the deployed binary can be
+# fingerprinted against what is installed on a shop PC.

@@ -1,0 +1,92 @@
+C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe.config
+C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.exe
+C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.pdb
+C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.XmlSerializers.dll
+C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe
+C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\QuickfloraPrinting\bin\Release\QuickfloraPrinting.XmlSerializers.dll
+C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\QuickfloraPrinting\bin\Release\QuickfloraPrinting.pdb
+C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.Printing.resources
+C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.Properties.Resources.resources
+C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.csproj.GenerateResource.Cache
+G:\QuickfloraPrintingUpdated\QuickfloraPrintingUpdated\QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe.config
+G:\QuickfloraPrintingUpdated\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.exe
+G:\QuickfloraPrintingUpdated\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.pdb
+G:\QuickfloraPrintingUpdated\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.XmlSerializers.dll
+G:\QuickfloraPrintingUpdated\QuickfloraPrintingUpdated\QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe
+G:\QuickfloraPrintingUpdated\QuickfloraPrintingUpdated\QuickfloraPrinting\bin\Release\QuickfloraPrinting.XmlSerializers.dll
+G:\QuickfloraPrintingUpdated\QuickfloraPrintingUpdated\QuickfloraPrinting\bin\Release\QuickfloraPrinting.pdb
+G:\QuickfloraPrintingUpdated\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\ResolveAssemblyReference.cache
+G:\QuickfloraPrintingUpdated\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.Printing.resources
+G:\QuickfloraPrintingUpdated\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.Properties.Resources.resources
+G:\QuickfloraPrintingUpdated\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\GenerateResource.read.1.tlog
+G:\QuickfloraPrintingUpdated\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\GenerateResource.write.1.tlog
+D:\QuickFLora\autoprint\QuickfloraPrintingUpdated\QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe.config
+D:\QuickFLora\autoprint\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.exe
+D:\QuickFLora\autoprint\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.pdb
+D:\QuickFLora\autoprint\QuickfloraPrintingUpdated\QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe
+D:\QuickFLora\autoprint\QuickfloraPrintingUpdated\QuickfloraPrinting\bin\Release\QuickfloraPrinting.pdb
+D:\QuickFLora\autoprint\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\ResolveAssemblyReference.cache
+D:\QuickFLora\autoprint\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.Printing.resources
+D:\QuickFLora\autoprint\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.Properties.Resources.resources
+D:\QuickFLora\autoprint\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\GenerateResource.read.1.tlog
+D:\QuickFLora\autoprint\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\GenerateResource.write.1.tlog
+D:\QuickFLora\autoprint\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\ResGen.read.1.tlog
+D:\QuickFLora\autoprint\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\ResGen.write.1.tlog
+C:\Users\sir_i\Documents\Office\Printing_App\QuickfloraPrintingUpdated-APS\QuickfloraPrintingUpdated-APS\QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe.config
+C:\Users\sir_i\Documents\Office\Printing_App\QuickfloraPrintingUpdated-APS\QuickfloraPrintingUpdated-APS\QuickfloraPrinting\obj\Release\QuickfloraPrinting.exe
+C:\Users\sir_i\Documents\Office\Printing_App\QuickfloraPrintingUpdated-APS\QuickfloraPrintingUpdated-APS\QuickfloraPrinting\obj\Release\QuickfloraPrinting.pdb
+C:\Users\sir_i\Documents\Office\Printing_App\QuickfloraPrintingUpdated-APS\QuickfloraPrintingUpdated-APS\QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe
+C:\Users\sir_i\Documents\Office\Printing_App\QuickfloraPrintingUpdated-APS\QuickfloraPrintingUpdated-APS\QuickfloraPrinting\bin\Release\QuickfloraPrinting.pdb
+C:\Users\sir_i\Documents\Office\Printing_App\QuickfloraPrintingUpdated-APS\QuickfloraPrintingUpdated-APS\QuickfloraPrinting\obj\Release\QuickfloraPrinting.Printing.resources
+C:\Users\sir_i\Documents\Office\Printing_App\QuickfloraPrintingUpdated-APS\QuickfloraPrintingUpdated-APS\QuickfloraPrinting\obj\Release\QuickfloraPrinting.Properties.Resources.resources
+C:\Users\sir_i\Documents\Office\Printing_App\QuickfloraPrintingUpdated-APS\QuickfloraPrintingUpdated-APS\QuickfloraPrinting\obj\Release\QuickfloraPrinting.csproj.GenerateResource.Cache
+C:\Users\sir_i\Documents\Office\Printing_App\QuickfloraPrintingUpdated\QuickfloraPrintingUpdated-APS\QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe.config
+C:\Users\sir_i\Documents\Office\Printing_App\QuickfloraPrintingUpdated\QuickfloraPrintingUpdated-APS\QuickfloraPrinting\obj\Release\QuickfloraPrinting.exe
+C:\Users\sir_i\Documents\Office\Printing_App\QuickfloraPrintingUpdated\QuickfloraPrintingUpdated-APS\QuickfloraPrinting\obj\Release\QuickfloraPrinting.pdb
+C:\QuickfloraPrintingUpdated\QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe.config
+C:\QuickfloraPrintingUpdated\QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe
+C:\QuickfloraPrintingUpdated\QuickfloraPrinting\bin\Release\QuickfloraPrinting.pdb
+C:\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.Printing.resources
+C:\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.Properties.Resources.resources
+C:\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.csproj.GenerateResource.Cache
+C:\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.exe
+C:\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.pdb
+C:\QuickfloraPrintingUpdated_2nd_Old\QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe.config
+C:\QuickfloraPrintingUpdated_2nd_Old\QuickfloraPrinting\obj\Release\QuickfloraPrinting.exe
+C:\QuickfloraPrintingUpdated_2nd_Old\QuickfloraPrinting\obj\Release\QuickfloraPrinting.pdb
+C:\QuickfloraPrintingUpdated_2nd_Old\QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe
+C:\QuickfloraPrintingUpdated_2nd_Old\QuickfloraPrinting\bin\Release\QuickfloraPrinting.pdb
+C:\QuickfloraPrintingUpdated_2nd_Old\QuickfloraPrinting\obj\Release\QuickfloraPrinting.Printing.resources
+C:\QuickfloraPrintingUpdated_2nd_Old\QuickfloraPrinting\obj\Release\QuickfloraPrinting.Properties.Resources.resources
+C:\QuickfloraPrintingUpdated_2nd_Old\QuickfloraPrinting\obj\Release\QuickfloraPrinting.csproj.GenerateResource.Cache
+C:\QuickfloraPrintingUpdated\QuickfloraPrinting\obj\Release\QuickfloraPrinting.csprojResolveAssemblyReference.cache
+C:\QFPrintApp\QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe.config
+C:\QFPrintApp\QuickfloraPrinting\obj\Release\QuickfloraPrinting.exe
+C:\QFPrintApp\QuickfloraPrinting\obj\Release\QuickfloraPrinting.pdb
+C:\QFPrintApp\QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe
+C:\QFPrintApp\QuickfloraPrinting\bin\Release\QuickfloraPrinting.XmlSerializers.dll
+C:\QFPrintApp\QuickfloraPrinting\bin\Release\QuickfloraPrinting.pdb
+C:\QFPrintApp\QuickfloraPrinting\obj\Release\QuickfloraPrinting.PrintHome.resources
+C:\QFPrintApp\QuickfloraPrinting\obj\Release\QuickfloraPrinting.Printing.resources
+C:\QFPrintApp\QuickfloraPrinting\obj\Release\QuickfloraPrinting.Properties.Resources.resources
+C:\QFPrintApp\QuickfloraPrinting\obj\Release\QuickfloraPrinting.csproj.GenerateResource.Cache
+C:\QFPrintApp\QuickfloraPrinting\obj\Release\QuickfloraPrinting.XmlSerializers.dll
+C:\QFPrintApp\QuickfloraPrinting\bin\Release\Microsoft.VisualBasic.PowerPacks.Vs.dll
+C:\QFPrintApp\QuickfloraPrinting\bin\Release\Microsoft.VisualBasic.PowerPacks.Vs.xml
+C:\QFPrintApp\QuickfloraPrinting\obj\Release\QuickfloraPrinting.csproj.CoreCompileInputs.cache
+C:\QFPrintApp\QuickfloraPrinting\obj\Release\QuickfloraPrinting.csproj.CopyComplete
+C:\.Net Core\QFPrintApp\QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe.config
+C:\.Net Core\QFPrintApp\QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe
+C:\.Net Core\QFPrintApp\QuickfloraPrinting\bin\Release\QuickfloraPrinting.XmlSerializers.dll
+C:\.Net Core\QFPrintApp\QuickfloraPrinting\bin\Release\QuickfloraPrinting.pdb
+C:\.Net Core\QFPrintApp\QuickfloraPrinting\bin\Release\Microsoft.VisualBasic.PowerPacks.Vs.dll
+C:\.Net Core\QFPrintApp\QuickfloraPrinting\bin\Release\Microsoft.VisualBasic.PowerPacks.Vs.xml
+C:\.Net Core\QFPrintApp\QuickfloraPrinting\obj\Release\QuickfloraPrinting.PrintHome.resources
+C:\.Net Core\QFPrintApp\QuickfloraPrinting\obj\Release\QuickfloraPrinting.Printing.resources
+C:\.Net Core\QFPrintApp\QuickfloraPrinting\obj\Release\QuickfloraPrinting.Properties.Resources.resources
+C:\.Net Core\QFPrintApp\QuickfloraPrinting\obj\Release\QuickfloraPrinting.csproj.GenerateResource.cache
+C:\.Net Core\QFPrintApp\QuickfloraPrinting\obj\Release\QuickfloraPrinting.csproj.CoreCompileInputs.cache
+C:\.Net Core\QFPrintApp\QuickfloraPrinting\obj\Release\QuickfloraPrinting.csproj.CopyComplete
+C:\.Net Core\QFPrintApp\QuickfloraPrinting\obj\Release\QuickfloraPrinting.exe
+C:\.Net Core\QFPrintApp\QuickfloraPrinting\obj\Release\QuickfloraPrinting.pdb
+C:\.Net Core\QFPrintApp\QuickfloraPrinting\obj\Release\QuickfloraPrinting.XmlSerializers.dll

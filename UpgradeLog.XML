@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?><?xml-stylesheet type='text/xsl' href='_UpgradeReport_Files/UpgradeReport.xslt'?><UpgradeLog>
+<Properties><Property Name="Solution" Value="QuickfloraPrinting">
+</Property><Property Name="Solution File" Value="C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\QuickfloraPrinting.sln">
+</Property><Property Name="User Options File" Value="C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\QuickfloraPrinting.suo">
+</Property><Property Name="Date" Value="Wednesday, September 25, 2013">
+</Property><Property Name="Time" Value="8:54 AM">
+</Property></Properties><Event ErrorLevel="0" Project="" Source="QuickfloraPrinting.sln" Description="File successfully backed up as C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\Backup\QuickfloraPrinting.sln">
+</Event><Event ErrorLevel="0" Project="" Source="QuickfloraPrinting.suo" Description="File successfully backed up as C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\Backup\QuickfloraPrinting.suo">
+</Event><Event ErrorLevel="0" Project="QuickfloraPrinting" Source="QuickfloraPrinting\QuickfloraPrinting.csproj" Description="Project file successfully backed up as C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\Backup\QuickfloraPrinting\QuickfloraPrinting.csproj">
+</Event><Event ErrorLevel="0" Project="QuickfloraPrinting" Source="QuickfloraPrinting\clsPrinting.cs" Description="File successfully backed up as C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\Backup\QuickfloraPrinting\clsPrinting.cs">
+</Event><Event ErrorLevel="0" Project="QuickfloraPrinting" Source="QuickfloraPrinting\Printing.cs" Description="File successfully backed up as C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\Backup\QuickfloraPrinting\Printing.cs">
+</Event><Event ErrorLevel="0" Project="QuickfloraPrinting" Source="QuickfloraPrinting\Printing.Designer.cs" Description="File successfully backed up as C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\Backup\QuickfloraPrinting\Printing.Designer.cs">
+</Event><Event ErrorLevel="0" Project="QuickfloraPrinting" Source="QuickfloraPrinting\Program.cs" Description="File successfully backed up as C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\Backup\QuickfloraPrinting\Program.cs">
+</Event><Event ErrorLevel="0" Project="QuickfloraPrinting" Source="QuickfloraPrinting\Properties\AssemblyInfo.cs" Description="File successfully backed up as C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\Backup\QuickfloraPrinting\Properties\AssemblyInfo.cs">
+</Event><Event ErrorLevel="0" Project="QuickfloraPrinting" Source="QuickfloraPrinting\Properties\Resources.Designer.cs" Description="File successfully backed up as C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\Backup\QuickfloraPrinting\Properties\Resources.Designer.cs">
+</Event><Event ErrorLevel="0" Project="QuickfloraPrinting" Source="QuickfloraPrinting\Properties\Settings.Designer.cs" Description="File successfully backed up as C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\Backup\QuickfloraPrinting\Properties\Settings.Designer.cs">
+</Event><Event ErrorLevel="0" Project="QuickfloraPrinting" Source="QuickfloraPrinting\Web References\QFPrint\Reference.cs" Description="File successfully backed up as C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\Backup\QuickfloraPrinting\Web References\QFPrint\Reference.cs">
+</Event><Event ErrorLevel="0" Project="QuickfloraPrinting" Source="QuickfloraPrinting\Properties\Settings.settings" Description="File successfully backed up as C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\Backup\QuickfloraPrinting\Properties\Settings.settings">
+</Event><Event ErrorLevel="0" Project="QuickfloraPrinting" Source="QuickfloraPrinting\app.config" Description="File successfully backed up as C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\Backup\QuickfloraPrinting\app.config">
+</Event><Event ErrorLevel="0" Project="QuickfloraPrinting" Source="QuickfloraPrinting\Web References\QFPrint\Reference.map" Description="File successfully backed up as C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\Backup\QuickfloraPrinting\Web References\QFPrint\Reference.map">
+</Event><Event ErrorLevel="0" Project="QuickfloraPrinting" Source="QuickfloraPrinting\Web References\QFPrint\Service.disco" Description="File successfully backed up as C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\Backup\QuickfloraPrinting\Web References\QFPrint\Service.disco">
+</Event><Event ErrorLevel="0" Project="QuickfloraPrinting" Source="QuickfloraPrinting\Web References\QFPrint\Service.wsdl" Description="File successfully backed up as C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\Backup\QuickfloraPrinting\Web References\QFPrint\Service.wsdl">
+</Event><Event ErrorLevel="0" Project="QuickfloraPrinting" Source="QuickfloraPrinting\Printing.resx" Description="File successfully backed up as C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\Backup\QuickfloraPrinting\Printing.resx">
+</Event><Event ErrorLevel="0" Project="QuickfloraPrinting" Source="QuickfloraPrinting\Properties\Resources.resx" Description="File successfully backed up as C:\Users\Quickflora\Documents\QuickfloraPrintingUpdated\Backup\QuickfloraPrinting\Properties\Resources.resx">
+</Event><Event ErrorLevel="0" Project="QuickfloraPrinting" Source="QuickfloraPrinting\QuickfloraPrinting.csproj" Description="Project converted successfully">
+</Event><Event ErrorLevel="3" Project="QuickfloraPrinting" Source="QuickfloraPrinting\QuickfloraPrinting.csproj" Description="Converted">
+</Event><Event ErrorLevel="0" Project="" Source="QuickfloraPrinting.sln" Description="Solution converted successfully">
+</Event><Event ErrorLevel="3" Project="" Source="QuickfloraPrinting.sln" Description="Converted">
+</Event><Event ErrorLevel="0" Project="QuickfloraPrinting" Source="QuickfloraPrinting\QuickfloraPrinting.csproj" Description="Scan complete: Upgrade not required for project files.">
+</Event></UpgradeLog>
