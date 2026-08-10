@@ -34,6 +34,7 @@
             this.notifyIcon1 = new System.Windows.Forms.NotifyIcon(this.components);
             this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.autoStartToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.label4 = new System.Windows.Forms.Label();
@@ -83,9 +84,10 @@
             // contextMenuStrip1
             // 
             this.contextMenuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.autoStartToolStripMenuItem,
             this.exitToolStripMenuItem});
             this.contextMenuStrip1.Name = "contextMenuStrip1";
-            this.contextMenuStrip1.Size = new System.Drawing.Size(112, 34);
+            this.contextMenuStrip1.Size = new System.Drawing.Size(213, 64);
             // 
             // exitToolStripMenuItem
             // 
@@ -94,6 +96,14 @@
             this.exitToolStripMenuItem.Size = new System.Drawing.Size(111, 30);
             this.exitToolStripMenuItem.Text = "Exit";
             this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitToolStripMenuItem_Click);
+            // 
+            // autoStartToolStripMenuItem
+            // 
+            this.autoStartToolStripMenuItem.CheckOnClick = true;
+            this.autoStartToolStripMenuItem.Name = "autoStartToolStripMenuItem";
+            this.autoStartToolStripMenuItem.Size = new System.Drawing.Size(212, 30);
+            this.autoStartToolStripMenuItem.Text = "Start with Windows";
+            this.autoStartToolStripMenuItem.CheckedChanged += new System.EventHandler(this.autoStartToolStripMenuItem_CheckedChanged);
             // 
             // label1
             // 
@@ -344,6 +354,7 @@
         private System.Windows.Forms.NotifyIcon notifyIcon1;
         private System.Windows.Forms.ContextMenuStrip contextMenuStrip1;
         private System.Windows.Forms.ToolStripMenuItem exitToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem autoStartToolStripMenuItem;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Label label4;

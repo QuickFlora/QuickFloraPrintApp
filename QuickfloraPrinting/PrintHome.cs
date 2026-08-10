@@ -13,8 +13,12 @@ namespace QuickfloraPrinting
 {
     public partial class PrintHome : Form
     {
-        public PrintHome()
+        private bool startMinimized;
+        private bool loadingSettings;
+
+        public PrintHome(bool startMinimized)
         {
+            this.startMinimized = startMinimized;
             InitializeComponent();
         }
 
@@ -87,8 +91,29 @@ namespace QuickfloraPrinting
                 Application.ExitThread();
         }
 
+        private void autoStartToolStripMenuItem_CheckedChanged(object sender, EventArgs e)
+        {
+            if (loadingSettings)
+                return;
+            Program.SetAutoStart(autoStartToolStripMenuItem.Checked);
+        }
+
         private void PrintHome_Load(object sender, EventArgs e)
         {
+            // Reflect the current auto-start state in the tray menu without
+            // firing the CheckedChanged handler while we set it.
+            loadingSettings = true;
+            autoStartToolStripMenuItem.Checked = Program.IsAutoStartEnabled();
+            loadingSettings = false;
+
+            // Launched by the Windows auto-start entry: go straight to the
+            // tray so staff are not interrupted.
+            if (startMinimized)
+            {
+                this.WindowState = FormWindowState.Minimized;
+                this.Hide();
+            }
+
             timer1.Enabled = true;
 
             string[] lines = System.IO.File.ReadAllLines(@"C:\\QFPrintApp\QuickfloraPrinting\Config.txt");
