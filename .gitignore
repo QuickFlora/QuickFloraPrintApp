@@ -1,8 +1,18 @@
+# Build output — NEVER commit these.
+#
+# Committed binaries caused a real incident on 2026-08-11: a tester downloaded the
+# branch source zip from GitHub, ran the STALE bin/Release/QuickfloraPrinting.exe
+# still sitting in it (the 2020 baseline), and correctly reported that neither new
+# feature worked — because the exe predated them by six years.
+#
+# Builds are produced from source and published as GitHub Releases. Never from a
+# source zip.
+QuickfloraPrinting/bin/
+QuickfloraPrinting/obj/
+bin/
+obj/
+
 # Visual Studio local state
 .vs/
 *.suo
 *.user
-
-# NOTE: bin/ and obj/ are deliberately NOT ignored in the baseline commit.
-# The compiled QuickfloraPrinting.exe is kept so the deployed binary can be
-# fingerprinted against what is installed on a shop PC.
