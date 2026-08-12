@@ -73,3 +73,23 @@ drawers and auto-cut for every florist.
 - Azure DevOps Task **AB#845** — Greenville cash drawer (the incident that surfaced all of this)
 - `github.com/QuickFlora/WindowServices` — contains a *different*, service-based `PrintApp`.
   **That is not the app deployed to florists.** This one is.
+
+## ⚠ Do not run an exe from a source zip
+
+This repository contains **source only**. Downloading a branch as a zip from GitHub gives you the
+code, not a runnable build.
+
+Until 2026-08-11 the repo also carried committed build output (`bin/Release/QuickfloraPrinting.exe`).
+That binary was the **April 2020 baseline** and was never rebuilt when source changed — so a source
+zip looked like a distributable build while containing six-year-old code. This caused a wasted test
+cycle: a tester ran it, correctly found the new features absent, and reasonably concluded the work
+had achieved nothing.
+
+`bin/` and `obj/` are now git-ignored. **Builds are published as GitHub Releases.** Check the release
+notes for the expected md5 and verify it before installing:
+
+```powershell
+Get-FileHash .\QuickfloraPrinting.exe -Algorithm MD5
+```
+
+Baseline (April 2020, no modern features): `24ecfc62920436426fb5943690cac90b`
