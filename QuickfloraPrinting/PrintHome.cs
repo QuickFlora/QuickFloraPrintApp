@@ -101,6 +101,50 @@ namespace QuickfloraPrinting
             Program.SetAutoStart(autoStartToolStripMenuItem.Checked);
         }
 
+        /// <summary>
+        /// AB#1325: locate Config.txt without a hardcoded C: path.
+        ///
+        /// This was pinned to C:\QFPrintApp\QuickfloraPrinting\Config.txt since 2020, so the app
+        /// only worked if installed to that exact location. A tester hit it immediately when the
+        /// files were unpacked one folder higher (AB#1327, 12 Aug 2026).
+        ///
+        /// Now: look beside the exe first, then the legacy locations, so existing installs keep
+        /// working untouched while new ones can live anywhere.
+        /// </summary>
+        private static string ResolveConfigPath()
+        {
+            System.Collections.Generic.List<string> candidates = new System.Collections.Generic.List<string>();
+            string exeDir = System.IO.Path.GetDirectoryName(Application.ExecutablePath);
+
+            candidates.Add(System.IO.Path.Combine(exeDir, "Config.txt"));
+            candidates.Add(System.IO.Path.Combine(exeDir, "QuickfloraPrinting"));
+            candidates[1] = System.IO.Path.Combine(candidates[1], "Config.txt");
+            candidates.Add("C:\\QFPrintApp\\QuickfloraPrinting\\Config.txt");
+            candidates.Add("C:\\QFPrintApp\\Config.txt");
+
+            foreach (string c in candidates)
+            {
+                try { if (System.IO.File.Exists(c)) return c; }
+                catch { }
+            }
+
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            sb.AppendLine("QuickFlora Print cannot find its settings file, Config.txt.");
+            sb.AppendLine();
+            sb.AppendLine("Put Config.txt in the same folder as QuickfloraPrinting.exe:");
+            sb.AppendLine();
+            sb.AppendLine("    " + exeDir);
+            sb.AppendLine();
+            sb.AppendLine("Looked in:");
+            foreach (string c in candidates) sb.AppendLine("    " + c);
+            sb.AppendLine();
+            sb.AppendLine("Email support@quickflora.com if you need a copy of Config.txt.");
+            MessageBox.Show(sb.ToString(), "Settings file not found",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+            return candidates[0];
+        }
+
         private void PrintHome_Load(object sender, EventArgs e)
         {
             // Reflect the current auto-start state in the tray menu without
@@ -124,7 +168,7 @@ namespace QuickfloraPrinting
 
             timer1.Enabled = true;
 
-            string[] lines = System.IO.File.ReadAllLines(@"C:\\QFPrintApp\QuickfloraPrinting\Config.txt");
+            string[] lines = System.IO.File.ReadAllLines(ResolveConfigPath());
             // Display the file contents by using a foreach loop.
             int n = 1;
 
