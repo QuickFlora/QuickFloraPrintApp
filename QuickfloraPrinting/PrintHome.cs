@@ -22,7 +22,38 @@ namespace QuickfloraPrinting
             InitializeComponent();
         }
 
-       
+        // Where Config.txt may live, in the order we look for it.
+        // 1. next to the exe - what you get when you unzip the release anywhere
+        // 2. a QuickfloraPrinting sub-folder - the layout inside the release zip
+        // 3./4. the original hardcoded locations, so existing tills keep working
+        private static string[] CandidateConfigPaths()
+        {
+            string exeDir = System.IO.Path.GetDirectoryName(Application.ExecutablePath);
+
+            return new string[]
+            {
+                System.IO.Path.Combine(exeDir, "Config.txt"),
+                System.IO.Path.Combine(exeDir, @"QuickfloraPrinting\Config.txt"),
+                @"C:\QFPrintApp\QuickfloraPrinting\Config.txt",
+                @"C:\QFPrintApp\Config.txt"
+            };
+        }
+
+        // Returns the first candidate that actually exists, or null if none do.
+        private static string ResolveConfigPath()
+        {
+            foreach (string candidate in CandidateConfigPaths())
+            {
+                if (System.IO.File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
+
         private void notifyIcon1_MouseDoubleClick(object sender, MouseEventArgs e)
         {
 
@@ -116,7 +147,22 @@ namespace QuickfloraPrinting
 
             timer1.Enabled = true;
 
-            string[] lines = System.IO.File.ReadAllLines(@"C:\\QFPrintApp\QuickfloraPrinting\Config.txt");
+            string configPath = ResolveConfigPath();
+            if (configPath == null)
+            {
+                MessageBox.Show(
+                    "Config.txt could not be found. The app looked in:" + Environment.NewLine +
+                    Environment.NewLine +
+                    string.Join(Environment.NewLine, CandidateConfigPaths()) + Environment.NewLine +
+                    Environment.NewLine +
+                    "Put Config.txt next to QuickfloraPrinting.exe and start the app again.",
+                    "QuickFlora Printing App - configuration missing",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Application.Exit();
+                return;
+            }
+
+            string[] lines = System.IO.File.ReadAllLines(configPath);
             // Display the file contents by using a foreach loop.
             int n = 1;
 
