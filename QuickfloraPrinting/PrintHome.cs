@@ -8,13 +8,20 @@ using System.Text;
 using System.Windows.Forms;
 using System.Management;
 using System.Drawing.Printing;
+using System.IO;
+using System.Diagnostics;
+using System.Reflection;
 
 namespace QuickfloraPrinting
 {
     public partial class PrintHome : Form
     {
-        public PrintHome()
+        private bool startMinimized;
+        private bool loadingSettings;
+
+        public PrintHome(bool startMinimized)
         {
+            this.startMinimized = startMinimized;
             InitializeComponent();
         }
 
@@ -87,11 +94,81 @@ namespace QuickfloraPrinting
                 Application.ExitThread();
         }
 
+        private void autoStartToolStripMenuItem_CheckedChanged(object sender, EventArgs e)
+        {
+            if (loadingSettings)
+                return;
+            Program.SetAutoStart(autoStartToolStripMenuItem.Checked);
+        }
+
+        /// <summary>
+        /// AB#1325: locate Config.txt without a hardcoded C: path.
+        ///
+        /// This was pinned to C:\QFPrintApp\QuickfloraPrinting\Config.txt since 2020, so the app
+        /// only worked if installed to that exact location. A tester hit it immediately when the
+        /// files were unpacked one folder higher (AB#1327, 12 Aug 2026).
+        ///
+        /// Now: look beside the exe first, then the legacy locations, so existing installs keep
+        /// working untouched while new ones can live anywhere.
+        /// </summary>
+        private static string ResolveConfigPath()
+        {
+            System.Collections.Generic.List<string> candidates = new System.Collections.Generic.List<string>();
+            string exeDir = System.IO.Path.GetDirectoryName(Application.ExecutablePath);
+
+            candidates.Add(System.IO.Path.Combine(exeDir, "Config.txt"));
+            candidates.Add(System.IO.Path.Combine(exeDir, "QuickfloraPrinting"));
+            candidates[1] = System.IO.Path.Combine(candidates[1], "Config.txt");
+            candidates.Add("C:\\QFPrintApp\\QuickfloraPrinting\\Config.txt");
+            candidates.Add("C:\\QFPrintApp\\Config.txt");
+
+            foreach (string c in candidates)
+            {
+                try { if (System.IO.File.Exists(c)) return c; }
+                catch { }
+            }
+
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            sb.AppendLine("QuickFlora Print cannot find its settings file, Config.txt.");
+            sb.AppendLine();
+            sb.AppendLine("Put Config.txt in the same folder as QuickfloraPrinting.exe:");
+            sb.AppendLine();
+            sb.AppendLine("    " + exeDir);
+            sb.AppendLine();
+            sb.AppendLine("Looked in:");
+            foreach (string c in candidates) sb.AppendLine("    " + c);
+            sb.AppendLine();
+            sb.AppendLine("Email support@quickflora.com if you need a copy of Config.txt.");
+            MessageBox.Show(sb.ToString(), "Settings file not found",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+            return candidates[0];
+        }
+
         private void PrintHome_Load(object sender, EventArgs e)
         {
+            // Reflect the current auto-start state in the tray menu without
+            // firing the CheckedChanged handler while we set it.
+            loadingSettings = true;
+            autoStartToolStripMenuItem.Checked = Program.IsAutoStartEnabled();
+            loadingSettings = false;
+
+            // AB#1327: version visible so a support call can start with
+            // "what does the bottom right say?" instead of guessing the build.
+            lblVersion.Text = "v" + Application.ProductVersion;
+            SetStatus("Starting up", "Connecting to QuickFlora", false);
+
+            // Launched by the Windows auto-start entry: go straight to the
+            // tray so staff are not interrupted.
+            if (startMinimized)
+            {
+                this.WindowState = FormWindowState.Minimized;
+                this.Hide();
+            }
+
             timer1.Enabled = true;
 
-            string[] lines = System.IO.File.ReadAllLines(@"C:\\QFPrintApp\QuickfloraPrinting\Config.txt");
+            string[] lines = System.IO.File.ReadAllLines(ResolveConfigPath());
             // Display the file contents by using a foreach loop.
             int n = 1;
 
@@ -176,6 +253,7 @@ namespace QuickfloraPrinting
                 lblprintrequest.Text = "New Print Request Found";
                 lblprintrequest.ForeColor = Color.Green;
                 lbltimer.ForeColor = Color.Red;
+                SetStatus("Printing", "Sending a receipt to " + txtdefaultprinter.Text, false);
                 
                 processprint();
             }
@@ -184,6 +262,7 @@ namespace QuickfloraPrinting
                 timer1.Enabled = true;
                 lblprintrequest.Text = "No Print Request Present";
                 lblprintrequest.ForeColor = Color.Red ;
+                SetStatus("Printing is working", "Connected. Waiting for the next receipt.", false);
                 lbltimer.ForeColor = Color.Green;
             }
 
@@ -375,5 +454,181 @@ namespace QuickfloraPrinting
 
 
 
-    }
+    
+        // ==================== AB#1327 — new interface behaviour ====================
+
+        /// <summary>Sets the status banner. Green = fine, amber = attention needed.</summary>
+        private void SetStatus(string headline, string detail, bool attention)
+        {
+            try
+            {
+                lblStatus.Text = headline;
+                lblStatusSub.Text = detail;
+                // PMS 486 for attention states, PMS 348 otherwise — per Brand Guidelines Ed.2
+                lblStatus.ForeColor = attention
+                    ? Color.FromArgb(204, 124, 104)
+                    : Color.FromArgb(3, 106, 55);
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Sends ONLY the cash-drawer kick byte (0x07) to the configured receipt printer.
+        /// This is the fastest way to tell a cabling/hardware fault from a software one:
+        /// if the drawer opens here, the hardware is fine and the problem is upstream.
+        /// Deliberately does NOT send a cut or any receipt text.
+        /// </summary>
+        private void btnTestDrawer_Click(object sender, EventArgs e)
+        {
+            string printer = txtdefaultprinter.Text.Trim();
+            if (printer.Length == 0)
+            {
+                MessageBox.Show("No printer is configured for this terminal.\r\n\r\nCheck line 6 of Config.txt.",
+                    "No printer set", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            try
+            {
+                // 0x07 = BEL = the drawer-kick byte on Star printers.
+                bool ok = QuickFloraEMV.RawPrinterHelper.SendStringToPrinter(printer, "\u0007");
+                if (ok)
+                {
+                    SetStatus("Cash drawer test sent", "Sent the open command to " + printer, false);
+                    MessageBox.Show(
+                        "The open command was sent to:\r\n\r\n    " + printer + "\r\n\r\n" +
+                        "DID THE DRAWER OPEN?\r\n\r\n" +
+                        "YES  - the drawer and cabling are fine. Any problem is in the receipt itself.\r\n" +
+                        "NO   - the problem is the printer, the cable, or the drawer. Not the software.",
+                        "Cash drawer test", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                else
+                {
+                    SetStatus("Cash drawer test failed", "Windows would not accept the job for " + printer, true);
+                    MessageBox.Show("Windows would not send to this printer:\r\n\r\n    " + printer +
+                        "\r\n\r\nCheck the printer is switched on and the name matches exactly.",
+                        "Test failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Could not send to the printer.\r\n\r\n" + ex.Message,
+                    "Test failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>Prints a short sample receipt, then cuts. Does not open the drawer.</summary>
+        private void btnTestPrint_Click(object sender, EventArgs e)
+        {
+            string printer = txtdefaultprinter.Text.Trim();
+            if (printer.Length == 0)
+            {
+                MessageBox.Show("No printer is configured for this terminal.\r\n\r\nCheck line 6 of Config.txt.",
+                    "No printer set", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            try
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.Append("\r\n");
+                sb.Append("     QUICKFLORA TEST PRINT\r\n");
+                sb.Append("     ---------------------\r\n\r\n");
+                sb.Append("  Company : " + txtcmp.Text + "\r\n");
+                sb.Append("  Terminal: " + txtTerminal.Text + "\r\n");
+                sb.Append("  Printer : " + printer + "\r\n");
+                sb.Append("  Time    : " + DateTime.Now.ToString("dd MMM yyyy  h:mm:ss tt") + "\r\n");
+                sb.Append("  Version : " + Application.ProductVersion + "\r\n\r\n");
+                sb.Append("  If you can read this, printing works.\r\n");
+                sb.Append("\r\n\r\n\r\n");
+                sb.Append("\u001B\u0064\u0030");   // ESC d 0 = cut. No drawer byte.
+
+                bool ok = QuickFloraEMV.RawPrinterHelper.SendStringToPrinter(printer, sb.ToString());
+                SetStatus(ok ? "Test print sent" : "Test print failed",
+                          ok ? "Sent to " + printer : "Windows rejected the job for " + printer, !ok);
+                if (!ok)
+                {
+                    MessageBox.Show("Windows would not send to this printer:\r\n\r\n    " + printer,
+                        "Test failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Could not print.\r\n\r\n" + ex.Message,
+                    "Test failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>Opens the folder holding every receipt this PC has printed.</summary>
+        private void btnOpenReceipts_Click(object sender, EventArgs e)
+        {
+            string folder = @"C:\QFPrintApp\Receipts";
+            try
+            {
+                if (!Directory.Exists(folder)) Directory.CreateDirectory(folder);
+                Process.Start("explorer.exe", "\"" + folder + "\"");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Could not open " + folder + "\r\n\r\n" + ex.Message,
+                    "Could not open folder", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// Copies everything support normally has to ask for onto the clipboard, so a problem
+        /// report arrives with the facts attached instead of "printing isn't working".
+        /// </summary>
+        private void btnCopyDiag_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                StringBuilder sb = new StringBuilder();
+                sb.AppendLine("QuickFlora Print App - support details");
+                sb.AppendLine("Generated : " + DateTime.Now.ToString("dd MMM yyyy h:mm:ss tt"));
+                sb.AppendLine("Version   : " + Application.ProductVersion);
+                sb.AppendLine("Machine   : " + Environment.MachineName);
+                sb.AppendLine("Windows   : " + Environment.OSVersion.VersionString);
+                sb.AppendLine();
+                sb.AppendLine("Company   : " + txtcmp.Text);
+                sb.AppendLine("Division  : " + txtDivision.Text);
+                sb.AppendLine("Department: " + txtdepartment.Text);
+                sb.AppendLine("Terminal  : " + txtTerminal.Text);
+                sb.AppendLine("Printer   : " + txtdefaultprinter.Text);
+                sb.AppendLine("Adobe     : " + txtadobe.Text);
+                sb.AppendLine();
+                sb.AppendLine("Status    : " + lblStatus.Text + " - " + lblStatusSub.Text);
+                sb.AppendLine("Activity  : " + lblprintrequest.Text);
+                sb.AppendLine();
+                sb.AppendLine("Printers this PC can see:");
+                foreach (string p in PrinterSettings.InstalledPrinters)
+                {
+                    sb.AppendLine("   " + p + (p == txtdefaultprinter.Text ? "   <-- configured for receipts" : ""));
+                }
+                sb.AppendLine();
+                try
+                {
+                    string rf = @"C:\QFPrintApp\Receipts";
+                    if (Directory.Exists(rf))
+                    {
+                        string[] files = Directory.GetFiles(rf);
+                        sb.AppendLine("Receipt files stored: " + files.Length);
+                    }
+                }
+                catch { }
+
+                Clipboard.SetText(sb.ToString());
+                MessageBox.Show(
+                    "Support details copied to the clipboard.\r\n\r\n" +
+                    "Paste them into an email to support@quickflora.com along with what went wrong.",
+                    "Copied", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Could not gather details.\r\n\r\n" + ex.Message,
+                    "Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+}
 }
