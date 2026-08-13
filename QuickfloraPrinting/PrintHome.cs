@@ -111,6 +111,28 @@ namespace QuickfloraPrinting
         /// Now: look beside the exe first, then the legacy locations, so existing installs keep
         /// working untouched while new ones can live anywhere.
         /// </summary>
+        /// <summary>
+        /// AB#1326: make sure a download target folder exists before writing to it.
+        ///
+        /// Receipt and PDF paths are hardcoded to C:\QFPrintApp\Receipts and C:\QFPrintApp\PDF.
+        /// On a fresh install those folders may not exist, WebClient.DownloadFile throws, the
+        /// exception is swallowed, and NOTHING PRINTS with no visible error. That is exactly what
+        /// a tester hit on a clean machine while an older machine worked, because the folders had
+        /// been created by earlier manual installs.
+        /// </summary>
+        private static void EnsureFolderFor(string filePath)
+        {
+            try
+            {
+                string dir = System.IO.Path.GetDirectoryName(filePath);
+                if (!string.IsNullOrEmpty(dir) && !System.IO.Directory.Exists(dir))
+                {
+                    System.IO.Directory.CreateDirectory(dir);
+                }
+            }
+            catch { }
+        }
+
         private static string ResolveConfigPath()
         {
             System.Collections.Generic.List<string> candidates = new System.Collections.Generic.List<string>();
@@ -320,6 +342,7 @@ namespace QuickfloraPrinting
                     lblprintfile.Text = "1.Downloading file:";
                     lblprintfile.Text = lblprintfile.Text + "\r\n" + filename;
                    // lblprintfile.Text = lblprintfile.Text + "\r\nPrinter Name :" + PrintText2;
+                    EnsureFolderFor("C:\\QFPrintApp\\Receipts\\" + filename);
                     wc.DownloadFile(PrintText1, "C:\\QFPrintApp\\Receipts\\" + filename);
                     lblprintfile.Text = lblprintfile.Text + "\r\n" + "2.Printing file on printer :" + PrintText2;
                     QuickFloraEMV.RawPrinterHelper.SendFileToPrinter(PrintText2, "C:\\QFPrintApp\\Receipts\\" + filename); 
@@ -338,6 +361,7 @@ namespace QuickfloraPrinting
                     //filename.Replace(" ", "");
                     //filename.Replace(" ", "");
 
+                    EnsureFolderFor("C:\\QFPrintApp\\PDF\\" + filename);
                     wc.DownloadFile(PrintText1, "C:\\QFPrintApp\\PDF\\" + filename);
                     lblprintfile.Text = lblprintfile.Text + "\r\n" + "2.Printing file on printer :" + PrintText2;
                     SetDefaultSystemPrinter(PrintText2);
