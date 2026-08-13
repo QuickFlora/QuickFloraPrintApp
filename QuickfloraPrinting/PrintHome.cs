@@ -128,19 +128,21 @@ namespace QuickfloraPrinting
                 catch { }
             }
 
-            System.Text.StringBuilder sb = new System.Text.StringBuilder();
-            sb.AppendLine("QuickFlora Print cannot find its settings file, Config.txt.");
-            sb.AppendLine();
-            sb.AppendLine("Put Config.txt in the same folder as QuickfloraPrinting.exe:");
-            sb.AppendLine();
-            sb.AppendLine("    " + exeDir);
-            sb.AppendLine();
-            sb.AppendLine("Looked in:");
-            foreach (string c in candidates) sb.AppendLine("    " + c);
-            sb.AppendLine();
-            sb.AppendLine("Email support@quickflora.com if you need a copy of Config.txt.");
-            MessageBox.Show(sb.ToString(), "Settings file not found",
-                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            // AB#1326: nothing configured yet — offer setup rather than showing an error
+            // about a file the user has never heard of.
+            string preferred = candidates[0];
+            using (SetupForm setup = new SetupForm(preferred))
+            {
+                if (setup.ShowDialog() == DialogResult.OK && System.IO.File.Exists(preferred))
+                {
+                    return preferred;
+                }
+            }
+
+            MessageBox.Show(
+                "QuickFlora Print has not been set up yet, so it cannot start.\r\n\r\n" +
+                "Run it again and complete the setup, or email support@quickflora.com.",
+                "Setup not completed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
             return candidates[0];
         }
