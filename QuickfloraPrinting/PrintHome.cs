@@ -120,6 +120,108 @@ namespace QuickfloraPrinting
         /// a tester hit on a clean machine while an older machine worked, because the folders had
         /// been created by earlier manual installs.
         /// </summary>
+        /// <summary>
+        /// AB#1323 — local rolling log beside the exe. Survives with no internet, which is often
+        /// exactly when it is needed. One file per day, 14 days kept.
+        /// </summary>
+        private static readonly object LogLock = new object();
+        private static void WriteToFile(string message)
+        {
+            try
+            {
+                string dir = System.IO.Path.Combine(
+                    System.IO.Path.GetDirectoryName(Application.ExecutablePath), "Logs");
+                if (!System.IO.Directory.Exists(dir)) System.IO.Directory.CreateDirectory(dir);
+                try
+                {
+                    foreach (string f in System.IO.Directory.GetFiles(dir, "AppLog_*.txt"))
+                    {
+                        if (System.IO.File.GetLastWriteTime(f) < DateTime.Now.AddDays(-14))
+                            System.IO.File.Delete(f);
+                    }
+                }
+                catch { }
+                string path = System.IO.Path.Combine(dir,
+                    "AppLog_" + DateTime.Now.ToString("yyyy_MM_dd") + ".txt");
+                lock (LogLock)
+                {
+                    System.IO.File.AppendAllText(path,
+                        DateTime.Now.ToString("HH:mm:ss") + "  " + message + "\r\n");
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// AB#1323 — report an exception to the server instead of discarding it.
+        /// Every catch in this file previously swallowed its exception; POSPrintAppError had
+        /// recorded nothing since February 2020. Two faults this week were found only because a
+        /// tester noticed, not because the app told anyone.
+        /// Wrapped so a telemetry failure can NEVER stop a receipt printing.
+        /// </summary>
+        private void ReportError(string location, string order, Exception ex)
+        {
+            try { WriteToFile("ERROR [" + location + "] order=" + order + " : " + ex.ToString()); }
+            catch { }
+            try
+            {
+                QFPrintService.QFPrintService svc = new QFPrintService.QFPrintService();
+                svc.InsertErrorDetails(
+                    Program.CompanyID, Program.DivisionID, Program.DepartmentID, Program.TerminalName,
+                    order == null ? "" : order, ex.Message,
+                    location + " | printer=" + txtdefaultprinter.Text + " | " + ex.StackTrace);
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// AB#1323 — record what was actually sent to the printer, including whether the
+        /// cash-drawer byte (0x07) was present. A production incident took a day to answer that
+        /// question by reading raw bytes off a server; this line answers it in seconds.
+        /// Reads the file only — the bytes sent to the printer are never altered.
+        /// </summary>
+        private void LogPrintJob(string order, string printer, string filePath, bool sent)
+        {
+            try
+            {
+                long size = 0;
+                bool hasDrawer = false, hasStarCut = false, hasEpsonCut = false;
+                try
+                {
+                    if (System.IO.File.Exists(filePath))
+                    {
+                        byte[] b = System.IO.File.ReadAllBytes(filePath);
+                        size = b.Length;
+                        for (int i2 = 0; i2 < b.Length; i2++)
+                        {
+                            if (b[i2] == 0x07) hasDrawer = true;
+                            if (i2 + 2 < b.Length && b[i2] == 0x1B && b[i2 + 1] == 0x64 && b[i2 + 2] == 0x30) hasStarCut = true;
+                            if (i2 + 1 < b.Length && b[i2] == 0x1D && b[i2 + 1] == 0x56) hasEpsonCut = true;
+                        }
+                    }
+                }
+                catch { }
+                string line = "PRINT order=" + order + " printer=" + printer + " bytes=" + size
+                    + " drawerByte=" + (hasDrawer ? "YES" : "no")
+                    + " starCut=" + (hasStarCut ? "YES" : "no")
+                    + " epsonCut=" + (hasEpsonCut ? "YES" : "no")
+                    + " sent=" + (sent ? "ok" : "FAILED");
+                WriteToFile(line);
+                if (!hasDrawer && size > 0)
+                {
+                    try
+                    {
+                        QFPrintService.QFPrintService svc = new QFPrintService.QFPrintService();
+                        svc.InsertErrorDetails(
+                            Program.CompanyID, Program.DivisionID, Program.DepartmentID, Program.TerminalName,
+                            order == null ? "" : order,
+                            "Receipt contained no cash-drawer command", line);
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+        }
         private static void EnsureFolderFor(string filePath)
         {
             try
@@ -268,6 +370,7 @@ namespace QuickfloraPrinting
             }
             catch (Exception ex)
             {
+                ReportError("obj_PingPOSForPrintingCompleted", "", ex);
                 //   label1.Text += " Wait...";
                 // return;
             }
@@ -313,6 +416,7 @@ namespace QuickfloraPrinting
             }
             catch (Exception ex)
             {
+                ReportError("obj_CheckPOSForPrintingCompleted", "", ex);
                 //   label1.Text += " Wait...";
                 // return;
             }
@@ -345,7 +449,8 @@ namespace QuickfloraPrinting
                     EnsureFolderFor("C:\\QFPrintApp\\Receipts\\" + filename);
                     wc.DownloadFile(PrintText1, "C:\\QFPrintApp\\Receipts\\" + filename);
                     lblprintfile.Text = lblprintfile.Text + "\r\n" + "2.Printing file on printer :" + PrintText2;
-                    QuickFloraEMV.RawPrinterHelper.SendFileToPrinter(PrintText2, "C:\\QFPrintApp\\Receipts\\" + filename); 
+                    bool sentOk = QuickFloraEMV.RawPrinterHelper.SendFileToPrinter(PrintText2, "C:\\QFPrintApp\\Receipts\\" + filename);
+                    LogPrintJob(PrintText, PrintText2, "C:\\QFPrintApp\\Receipts\\" + filename, sentOk);
                 }
 
                 if (PrintText == "PDF")
@@ -371,6 +476,7 @@ namespace QuickfloraPrinting
                     }
                     catch (Exception ex)
                     {
+                        ReportError("obj_CheckPOSForPrintingCompleted", "", ex);
                         var str = "";
                         str = ex.Message;
                       //  MessageBox.Show(str);
@@ -405,6 +511,7 @@ namespace QuickfloraPrinting
             }
             catch (Exception ex)
             {
+                ReportError("obj_CheckPOSForPrintingCompleted", "", ex);
 
             }
 
@@ -538,6 +645,7 @@ namespace QuickfloraPrinting
             }
             catch (Exception ex)
             {
+                ReportError("btnTestDrawer_Click", "", ex);
                 MessageBox.Show("Could not send to the printer.\r\n\r\n" + ex.Message,
                     "Test failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -580,6 +688,7 @@ namespace QuickfloraPrinting
             }
             catch (Exception ex)
             {
+                ReportError("btnTestPrint_Click", "", ex);
                 MessageBox.Show("Could not print.\r\n\r\n" + ex.Message,
                     "Test failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -596,6 +705,7 @@ namespace QuickfloraPrinting
             }
             catch (Exception ex)
             {
+                ReportError("btnOpenReceipts_Click", "", ex);
                 MessageBox.Show("Could not open " + folder + "\r\n\r\n" + ex.Message,
                     "Could not open folder", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -651,6 +761,7 @@ namespace QuickfloraPrinting
             }
             catch (Exception ex)
             {
+                ReportError("btnCopyDiag_Click", "", ex);
                 MessageBox.Show("Could not gather details.\r\n\r\n" + ex.Message,
                     "Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
