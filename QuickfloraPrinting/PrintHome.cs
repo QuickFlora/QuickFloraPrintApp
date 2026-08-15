@@ -180,41 +180,73 @@ namespace QuickfloraPrinting
         /// question by reading raw bytes off a server; this line answers it in seconds.
         /// Reads the file only — the bytes sent to the printer are never altered.
         /// </summary>
-        private void LogPrintJob(string order, string printer, string filePath, bool sent)
+        /// <summary>
+        /// AB#1323 — inspect a downloaded print file.
+        ///
+        /// MUST be called BEFORE the file is sent to the printer. v3.2 read it afterwards, when the
+        /// spooler still holds the handle: ReadAllBytes threw, the failure was swallowed, and the
+        /// line reported bytes=0 — which then read as drawerByte=no. In Daman's 15 Aug test that
+        /// looked like a finding about the cash drawer when in truth nothing had been read at all.
+        /// A diagnostic that invents an answer is worse than no diagnostic.
+        ///
+        /// Never reports 0 for an unread file: NOFILE and UNREADABLE are distinct from a real zero.
+        /// </summary>
+        private static string InspectPrintFile(string filePath, out bool hasDrawer, out long size)
+        {
+            hasDrawer = false;
+            size = -1;
+            bool hasStarCut = false, hasEpsonCut = false;
+            try
+            {
+                if (!System.IO.File.Exists(filePath)) return " bytes=NOFILE";
+                byte[] b = System.IO.File.ReadAllBytes(filePath);
+                size = b.Length;
+                for (int i = 0; i < b.Length; i++)
+                {
+                    if (b[i] == 0x07) hasDrawer = true;
+                    if (i + 2 < b.Length && b[i] == 0x1B && b[i + 1] == 0x64 && b[i + 2] == 0x30) hasStarCut = true;
+                    if (i + 1 < b.Length && b[i] == 0x1D && b[i + 1] == 0x56) hasEpsonCut = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                return " bytes=UNREADABLE(" + ex.GetType().Name + ")";
+            }
+            return " bytes=" + size
+                + " drawerByte=" + (hasDrawer ? "YES" : "no")
+                + " starCut=" + (hasStarCut ? "YES" : "no")
+                + " epsonCut=" + (hasEpsonCut ? "YES" : "no");
+        }
+
+        /// <summary>
+        /// AB#1323 — record one print job.
+        ///
+        /// `type` is the document kind the server queued ("Text" = raw receipt, "PDF" = worksheet or
+        /// card), NOT an order number. v3.2 labelled this field order= and so logged "order=Text",
+        /// which told the reader nothing and implied a lookup that does not exist. The queue row
+        /// carries no order number; the filename and slno are what identify the job.
+        /// </summary>
+        private void LogPrintJob(string type, string fileName, int slno, string printer,
+                                 string detail, bool hasDrawer, long size, bool sent)
         {
             try
             {
-                long size = 0;
-                bool hasDrawer = false, hasStarCut = false, hasEpsonCut = false;
-                try
-                {
-                    if (System.IO.File.Exists(filePath))
-                    {
-                        byte[] b = System.IO.File.ReadAllBytes(filePath);
-                        size = b.Length;
-                        for (int i2 = 0; i2 < b.Length; i2++)
-                        {
-                            if (b[i2] == 0x07) hasDrawer = true;
-                            if (i2 + 2 < b.Length && b[i2] == 0x1B && b[i2 + 1] == 0x64 && b[i2 + 2] == 0x30) hasStarCut = true;
-                            if (i2 + 1 < b.Length && b[i2] == 0x1D && b[i2 + 1] == 0x56) hasEpsonCut = true;
-                        }
-                    }
-                }
-                catch { }
-                string line = "PRINT order=" + order + " printer=" + printer + " bytes=" + size
-                    + " drawerByte=" + (hasDrawer ? "YES" : "no")
-                    + " starCut=" + (hasStarCut ? "YES" : "no")
-                    + " epsonCut=" + (hasEpsonCut ? "YES" : "no")
+                string line = "PRINT type=" + type + " file=" + fileName + " slno=" + slno
+                    + " printer=" + printer + detail
                     + " sent=" + (sent ? "ok" : "FAILED");
                 WriteToFile(line);
-                if (!hasDrawer && size > 0)
+
+                // Only a raw receipt can carry a drawer command — a PDF never does — and an unread
+                // file proves nothing either way. Reporting those would be a false alarm, which is
+                // how v3.2 produced a drawerByte=no that meant nothing.
+                if (type == "Text" && size > 0 && !hasDrawer)
                 {
                     try
                     {
                         QFPrintService.QFPrintService svc = new QFPrintService.QFPrintService();
                         svc.InsertErrorDetails(
                             Program.CompanyID, Program.DivisionID, Program.DepartmentID, Program.TerminalName,
-                            order == null ? "" : order,
+                            fileName == null ? "" : fileName,
                             "Receipt contained no cash-drawer command", line);
                     }
                     catch { }
@@ -449,8 +481,10 @@ namespace QuickfloraPrinting
                     EnsureFolderFor("C:\\QFPrintApp\\Receipts\\" + filename);
                     wc.DownloadFile(PrintText1, "C:\\QFPrintApp\\Receipts\\" + filename);
                     lblprintfile.Text = lblprintfile.Text + "\r\n" + "2.Printing file on printer :" + PrintText2;
+                    bool hadDrawer; long fileSize;
+                    string detail = InspectPrintFile("C:\\QFPrintApp\\Receipts\\" + filename, out hadDrawer, out fileSize);
                     bool sentOk = QuickFloraEMV.RawPrinterHelper.SendFileToPrinter(PrintText2, "C:\\QFPrintApp\\Receipts\\" + filename);
-                    LogPrintJob(PrintText, PrintText2, "C:\\QFPrintApp\\Receipts\\" + filename, sentOk);
+                    LogPrintJob(PrintText, filename, slno, PrintText2, detail, hadDrawer, fileSize, sentOk);
                 }
 
                 if (PrintText == "PDF")
@@ -470,18 +504,26 @@ namespace QuickfloraPrinting
                     wc.DownloadFile(PrintText1, "C:\\QFPrintApp\\PDF\\" + filename);
                     lblprintfile.Text = lblprintfile.Text + "\r\n" + "2.Printing file on printer :" + PrintText2;
                     SetDefaultSystemPrinter(PrintText2);
+                    // AB#1323 — log worksheets and cards too. v3.2 logged only the receipt, so
+                    // Daman's 15 Aug test printed three documents and produced a single line,
+                    // which made a complete log look like a broken one.
+                    bool pdfDrawer; long pdfSize;
+                    string pdfDetail = InspectPrintFile("C:\\QFPrintApp\\PDF\\" + filename, out pdfDrawer, out pdfSize);
+                    bool pdfSent = true;
                     try
                     {
                         Pdf.PrintPDFs("C:\\QFPrintApp\\PDF\\" + filename, txtadobe.Text, PrintText2);
                     }
                     catch (Exception ex)
                     {
-                        ReportError("obj_CheckPOSForPrintingCompleted", "", ex);
+                        pdfSent = false;
+                        ReportError("obj_CheckPOSForPrintingCompleted", filename, ex);
                         var str = "";
                         str = ex.Message;
                       //  MessageBox.Show(str);
 
                     }
+                    LogPrintJob(PrintText, filename, slno, PrintText2, pdfDetail, pdfDrawer, pdfSize, pdfSent);
                     //Pdf.PrintPDFs("C:\\QFPrintApp\\PDF\\" + PrintText2 + "_" + filename, txtadobe.Text, PrintText2);
 
                 }
