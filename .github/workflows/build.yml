@@ -1,6 +1,13 @@
 name: Build QuickFlora Print App
 
-# Produces an installable Windows build. Download it from the run's Artifacts section.
+# Builds the app AND the installer, so a release is never hand-made again.
+#
+# Runs on a SELF-HOSTED runner on WEB1STG (100.25.165.137, staging).
+# GitHub's own windows-latest runners stopped working on this repo on
+# 10 Aug 2026 - every run since is startup_failure at 0 seconds - because the
+# QuickFlora org is on the Free plan with a private repo, so there are no
+# hosted Actions minutes. A self-hosted runner costs nothing and uses the box
+# we already build on. See BUILDING.md for how the runner was registered.
 on:
   push:
     branches: [main, "AB*"]
@@ -9,59 +16,62 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: [self-hosted, windows, web1stg]
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Add MSBuild to PATH
-        uses: microsoft/setup-msbuild@v2
-
-      - name: Show available .NET Framework targeting packs
-        shell: pwsh
-        run: |
-          $p = "C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework"
-          if (Test-Path $p) { Get-ChildItem $p | Select-Object -ExpandProperty Name } else { "none found" }
-
-      - name: Restore NuGet packages
-        shell: pwsh
-        run: |
-          if (Test-Path QuickfloraPrinting\packages.config) {
-            nuget restore QuickfloraPrinting.sln
-          } else {
-            "No packages.config - nothing to restore"
-          }
-
       - name: Build (Release)
         shell: pwsh
-        run: msbuild QuickfloraPrinting.sln /p:Configuration=Release /p:Platform="Any CPU" /verbosity:minimal
+        run: |
+          $msbuild = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\MSBuild.exe"
+          if (-not (Test-Path $msbuild)) { throw "MSBuild not found at $msbuild" }
+          # GenerateSerializationAssemblies=Off because sgen.exe is not on WEB1STG.
+          & $msbuild QuickfloraPrinting.sln `
+              /p:Configuration=Release `
+              /p:Platform="Any CPU" `
+              /p:GenerateSerializationAssemblies=Off `
+              /verbosity:minimal
+          if ($LASTEXITCODE -ne 0) { throw "Build failed" }
 
-      - name: Stamp build info
+      - name: Verify the build produced a versioned executable
         shell: pwsh
         run: |
           $exe = "QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe"
           if (-not (Test-Path $exe)) { throw "Build produced no executable at $exe" }
-          $h = (Get-FileHash $exe -Algorithm MD5).Hash
-          $len = (Get-Item $exe).Length
-          "QuickFlora Print App" | Out-File -Encoding utf8 build-info.txt
-          "commit : ${{ github.sha }}"        | Out-File -Append -Encoding utf8 build-info.txt
-          "run    : ${{ github.run_number }}" | Out-File -Append -Encoding utf8 build-info.txt
-          "exe    : $len bytes"               | Out-File -Append -Encoding utf8 build-info.txt
-          "md5    : $h"                       | Out-File -Append -Encoding utf8 build-info.txt
-          Get-Content build-info.txt
+          $v = (Get-Item $exe).VersionInfo.FileVersion
+          Write-Host "file version: $v"
+          # Guards against the 1.0.0.0 problem: v3.0-v3.3 all shipped stamped
+          # 1.0.0.0, so no shop could tell which version it was running.
+          if ($v -like "1.0.0*") { throw "Executable is still stamped $v - bump AssemblyInfo.cs" }
 
-      - name: Package for install
+      - name: Build the installer
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path package | Out-Null
-          Copy-Item QuickfloraPrinting\bin\Release\* package\ -Recurse -Force
-          Copy-Item build-info.txt package\ -Force
-          if (Test-Path QuickfloraPrinting\Config.txt) { Copy-Item QuickfloraPrinting\Config.txt package\ -Force }
-          New-Item -ItemType Directory -Force -Path package\Receipts | Out-Null
-          New-Item -ItemType Directory -Force -Path package\PDF | Out-Null
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw "Inno Setup 6 is not installed on this runner. See BUILDING.md." }
+          & $iscc "installer\QuickFloraPrint.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Installer build failed" }
 
-      - name: Upload installable build
+      - name: Record hashes
+        shell: pwsh
+        run: |
+          $exe   = "QuickfloraPrinting\bin\Release\QuickfloraPrinting.exe"
+          $setup = Get-ChildItem "installer\Output\QuickFloraPrintSetup-*.exe" | Select-Object -First 1
+          "QuickFlora Print App"                                   | Out-File -Encoding utf8 build-info.txt
+          "commit    : ${{ github.sha }}"                          | Out-File -Append -Encoding utf8 build-info.txt
+          "run       : ${{ github.run_number }}"                   | Out-File -Append -Encoding utf8 build-info.txt
+          "version   : $((Get-Item $exe).VersionInfo.FileVersion)" | Out-File -Append -Encoding utf8 build-info.txt
+          "exe md5   : $((Get-FileHash $exe -Algorithm MD5).Hash)" | Out-File -Append -Encoding utf8 build-info.txt
+          "setup     : $($setup.Name)"                             | Out-File -Append -Encoding utf8 build-info.txt
+          "setup md5 : $((Get-FileHash $setup.FullName -Algorithm MD5).Hash)" | Out-File -Append -Encoding utf8 build-info.txt
+          Get-Content build-info.txt
+
+      - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
-          name: QuickFloraPrintApp-build-${{ github.run_number }}
-          path: package/
-          retention-days: 30
+          name: QuickFloraPrintSetup-${{ github.run_number }}
+          path: |
+            installer/Output/*.exe
+            build-info.txt
+          retention-days: 90
