@@ -489,8 +489,12 @@ function Get-PrintAppLog {
     if (-not (Test-Path -LiteralPath $dir)) { return [PSCustomObject]@{ File = $null; Note = "no Logs folder - app is older than AB#1323"; Tail = @(); Errors = @() } }
     $f = Get-ChildItem -LiteralPath $dir -Filter "AppLog_*.txt" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if (-not $f) { return [PSCustomObject]@{ File = $null; Note = "Logs folder is empty"; Tail = @(); Errors = @() } }
-    $tail = @(Get-Content -LiteralPath $f.FullName -Tail 20 -ErrorAction SilentlyContinue)
-    $errs = @(Select-String -LiteralPath $f.FullName -Pattern 'error|exception|fail' -ErrorAction SilentlyContinue | Select-Object -Last 20 | ForEach-Object { $_.Line })
+    # Lines are cut to 500 characters. The app can log a whole print file on one line -
+    # on the Lenovo test PC three lines came to 1.1 MB, past print-ingest's 1 MB limit,
+    # so every check-in would have been refused.
+    $cut = { param($l) if ($l.Length -gt 500) { $l.Substring(0, 500) + " ...[" + $l.Length + " chars]" } else { $l } }
+    $tail = @(Get-Content -LiteralPath $f.FullName -Tail 20 -ErrorAction SilentlyContinue | ForEach-Object { & $cut $_ })
+    $errs = @(Select-String -LiteralPath $f.FullName -Pattern 'error|exception|fail' -ErrorAction SilentlyContinue | Select-Object -Last 20 | ForEach-Object { & $cut $_.Line })
     return [PSCustomObject]@{ File = $f.FullName; Note = "last written " + $f.LastWriteTime.ToString("yyyy-MM-dd HH:mm"); Tail = $tail; Errors = $errs }
 }
 
