@@ -611,7 +611,37 @@ namespace QuickfloraPrinting
                     jobShown = true;
                 }
 
-                if (PrintText == "PDF")
+                // AB#3170 (v4-8): HTML work ticket through Edge when the server saved one beside the
+                // PDF (QFReports WTReportV2RetailUS). Falls back to the PDF + Adobe below otherwise.
+                bool printedHtml = false;
+                if (PrintText == "PDF" && PrintText1.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+                {
+                    string htmlName = System.IO.Path.ChangeExtension(FileName, ".html");
+                    string htmlPath = "C:\\QFPrintApp\\PDF\\" + htmlName;
+                    if (HtmlPrinter.TryDownload(PrintText1.Substring(0, PrintText1.Length - 4) + ".html", htmlPath))
+                    {
+                        lblprintfile.Text = "1.Downloaded HTML: " + htmlName + "\r\n2.Printing with Edge on " + PrintText2;
+                        SetDefaultSystemPrinter(PrintText2);      // Edge kiosk printing uses the default printer
+                        string title = HtmlPrinter.TitleOf(htmlPath);
+                        if (string.IsNullOrEmpty(title)) title = htmlName;
+                        SpoolWatch.Start(PrintText2, title, DateTime.Now);
+                        string htmlDetail;
+                        printedHtml = HtmlPrinter.Print(htmlPath, PrintText2, title, out htmlDetail);
+                        LogPrintJob("HTML", htmlName, slno, PrintText2, " bytes=" + new System.IO.FileInfo(htmlPath).Length + htmlDetail, false, 0, printedHtml);
+                        if (printedHtml)
+                        {
+                            sentJob = AddJob(PrintText, htmlName, PrintText2, true, (DateTime.Now - jobStarted).TotalSeconds);
+                            if (sentJob != null) sentJob.Doc = title;
+                            jobShown = true;
+                        }
+                        else
+                        {
+                            WriteToFile("HTML print failed for " + htmlName + " - falling back to the PDF");
+                        }
+                    }
+                }
+
+                if (PrintText == "PDF" && !printedHtml)
                 {
                     string filename = "";
                     //filename = PrintText1.Replace("https://secure.localflorist.com/PDF/", "");
@@ -903,7 +933,7 @@ namespace QuickfloraPrinting
         /// the send (Adobe takes ~10 s). Staging test 7 Oct 2026: without this, a PDF the Canon printed
         /// during the send was never seen and was wrongly reported "not printed".
         /// </summary>
-        private static class SpoolWatch
+        internal static class SpoolWatch
         {
             public class Sighting
             {
