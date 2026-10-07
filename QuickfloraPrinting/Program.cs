@@ -22,6 +22,29 @@ namespace QuickfloraPrinting
         public static string TerminalName = "DEFAULT";
         public static string rawPrinter = "";
 
+        // AB#3189: the version is shown on every window, dialog and tray message, so a support call
+        // can always start from "what version does it say?". Taken from AssemblyInfo, never typed.
+        public static string AppVersion
+        {
+            get
+            {
+                Version v = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+                return "v" + v.Major + "." + v.Minor + "." + v.Build;
+            }
+        }
+
+        /// <summary>Main window title. BringExistingInstanceToFront looks for this exact text.</summary>
+        public static string WindowTitle
+        {
+            get { return "QuickFlora Print App " + AppVersion; }
+        }
+
+        /// <summary>Title for a message box or dialog: "Test failed - QuickFlora Print v3.5.0".</summary>
+        public static string Caption(string title)
+        {
+            return title + " - QuickFlora Print " + AppVersion;
+        }
+
         private const string SingleInstanceMutexName = "QuickfloraPrintingSingleInstance";
         private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
         private const string RunValueName = "QuickfloraPrinting";
@@ -77,7 +100,10 @@ namespace QuickfloraPrinting
             {
                 // FindWindow matches hidden windows too, which matters because
                 // the running copy is usually minimised to the tray.
-                IntPtr hWnd = FindWindow(null, "QuickFlora Print ");
+                IntPtr hWnd = FindWindow(null, WindowTitle);
+                // A copy from before 3.5 still has the old fixed title.
+                if (hWnd == IntPtr.Zero)
+                    hWnd = FindWindow(null, "QuickFlora Print ");
                 if (hWnd == IntPtr.Zero)
                     return;
 
@@ -176,7 +202,7 @@ namespace QuickfloraPrinting
             catch (Exception ex)
             {
                 MessageBox.Show("Could not update the auto-start setting:\r\n" + ex.Message,
-                    "QuickFlora Printing", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    Program.Caption("Start with Windows"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
     }

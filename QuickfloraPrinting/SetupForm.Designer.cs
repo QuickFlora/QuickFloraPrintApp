@@ -410,7 +410,7 @@ namespace QuickfloraPrinting
             this.MinimizeBox = false;
             this.Name = "SetupForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "QuickFlora Print — Setup";
+            this.Text = Program.Caption("Setup");
             this.Load += new System.EventHandler(this.SetupForm_Load);
             this.pnlHeader.ResumeLayout(false);
             this.pnlHeader.PerformLayout();

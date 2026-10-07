@@ -148,7 +148,7 @@ namespace QuickfloraPrinting
             if (token.Length == 0)
             {
                 MessageBox.Show("Enter the activation code supplied by QuickFlora.",
-                    "No code entered", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    Program.Caption("No code entered"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -174,7 +174,7 @@ namespace QuickfloraPrinting
                     MessageBox.Show(
                         "Activation code accepted and this PC has been registered.\r\n\r\n" +
                         "Please still confirm the details below, then choose your receipt printer.",
-                        "Activated", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        Program.Caption("Activated"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 else
                 {
@@ -184,7 +184,7 @@ namespace QuickfloraPrinting
                         "QuickFlora did not recognise that activation code.\r\n\r\n" +
                         "Check it was typed correctly, or email support@quickflora.com for a new one.\r\n\r\n" +
                         "You can still set this up manually below.",
-                        "Code not recognised", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        Program.Caption("Code not recognised"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             }
             catch (Exception ex)
@@ -194,7 +194,7 @@ namespace QuickfloraPrinting
                 MessageBox.Show(
                     "Could not reach QuickFlora to check the code.\r\n\r\n" +
                     "Check this PC is on the internet, or set up manually below.\r\n\r\n" + ex.Message,
-                    "No connection", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    Program.Caption("No connection"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
             finally
             {
@@ -234,12 +234,12 @@ namespace QuickfloraPrinting
                     "\r\n\r\nDid the cash drawer open?\r\n\r\n" +
                     "YES - the printer, cable and drawer are all working.\r\n" +
                     "NO  - check the drawer cable is plugged into the printer.",
-                    "Cash drawer test", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    Program.Caption("Cash drawer test"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Could not send to that printer.\r\n\r\n" + ex.Message,
-                    "Test failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    Program.Caption("Test failed"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -260,18 +260,18 @@ namespace QuickfloraPrinting
                 QuickFloraEMV.RawPrinterHelper.SendStringToPrinter(printer, sb.ToString());
                 MessageBox.Show("Test receipt sent to:\r\n\r\n    " + printer +
                     "\r\n\r\nDid it print and cut?",
-                    "Test print", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    Program.Caption("Test print"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Could not print.\r\n\r\n" + ex.Message,
-                    "Test failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    Program.Caption("Test failed"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void NeedPrinter()
         {
-            MessageBox.Show("Choose the receipt printer first.", "No printer chosen",
+            MessageBox.Show("Choose the receipt printer first.", Program.Caption("No printer chosen"),
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
@@ -336,7 +336,7 @@ namespace QuickfloraPrinting
                     "Could not save the settings to:\r\n\r\n    " + ConfigPath + "\r\n\r\n" +
                     "You may need to run QuickFlora Print as administrator, or install it somewhere " +
                     "your account can write to.\r\n\r\n" + ex.Message,
-                    "Could not save", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    Program.Caption("Could not save"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
