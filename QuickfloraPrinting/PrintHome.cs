@@ -916,7 +916,7 @@ namespace QuickfloraPrinting
                     WriteToFile("CONFIRM slno=" + j.Slno + " file=" + j.File + " printer=" + j.Printer
                         + " result=" + (outcome == "Printed" ? "printed" : "NOT PRINTED") + " after " + age.ToString("0") + "s"
                         + (outcome == "Printed" ? "" : " - left open on the server"));
-                    if (outcome == "Printed")
+                    if (outcome == "Printed" && j.Slno > 0)   // a reprint (slno 0) is not a server job
                     {
                         QFPrintService.QFPrintService obj = new QFPrintService.QFPrintService();
                         obj.UpdatePOSForPrintingAsync(Program.CompanyID, Program.DivisionID, Program.DepartmentID, j.Slno);
@@ -1413,6 +1413,8 @@ namespace QuickfloraPrinting
 
         private void RefreshJobList()
         {
+            // keep the user's selection: the list is rebuilt every second while a job is confirming
+            object keep = lstJobs.SelectedItems.Count == 1 ? lstJobs.SelectedItems[0].Tag : null;
             lstJobs.BeginUpdate();
             try
             {
@@ -1429,6 +1431,7 @@ namespace QuickfloraPrinting
                 foreach (JobRow j in jobs)
                 {
                     ListViewItem it = new ListViewItem(j.When.ToString("h:mm tt"));
+                    it.Tag = j;   // Reprint uses the row's job
                     it.UseItemStyleForSubItems = false;
                     it.SubItems.Add(j.Form);
                     it.SubItems.Add(j.File);
@@ -1446,9 +1449,119 @@ namespace QuickfloraPrinting
                     if (bad)
                         foreach (ListViewItem.ListViewSubItem sub in it.SubItems) sub.BackColor = Color.FromArgb(253, 241, 240);
                     lstJobs.Items.Add(it);
+                    if (keep != null && ReferenceEquals(keep, j)) it.Selected = true;
                 }
             }
-            finally { lstJobs.EndUpdate(); }
+            finally { lstJobs.EndUpdate(); btnReprint.Enabled = lstJobs.SelectedItems.Count == 1 && lstJobs.SelectedItems[0].Tag is JobRow; }
+        }
+
+        // ==================== Reprint (4.0) ====================
+
+        private void lstJobs_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            btnReprint.Enabled = lstJobs.SelectedItems.Count == 1 && lstJobs.SelectedItems[0].Tag is JobRow;
+        }
+
+        private void btnReprint_Click(object sender, EventArgs e)
+        {
+            if (lstJobs.SelectedItems.Count != 1) return;
+            JobRow src = lstJobs.SelectedItems[0].Tag as JobRow;
+            if (src == null || string.IsNullOrEmpty(src.File) || string.IsNullOrEmpty(src.Printer)) return;
+            if (MessageBox.Show(this, "Print this again?\r\n\r\n" + src.Form + "\r\n" + src.File + "\r\non " + src.Printer,
+                    Program.Caption("Reprint"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            Cursor = Cursors.WaitCursor;
+            try { Reprint(src); }
+            finally { Cursor = Cursors.Default; }
+        }
+
+        /// <summary>
+        /// Prints a job from today's list again on the same printer. Uses the copy this PC downloaded
+        /// (C:\QFPrintApp\PDF or \Receipts); a work ticket or card missing there is fetched again from
+        /// reports.quickflora.com/PDF. Local only: the server's queue row is not touched, and a receipt
+        /// is reprinted WITHOUT its cash-drawer kick. The new row is confirmed like any 4.0 job.
+        /// </summary>
+        private void Reprint(JobRow src)
+        {
+            string ext = System.IO.Path.GetExtension(src.File).ToLowerInvariant();
+            bool isHtml = ext == ".html", isPdf = ext == ".pdf";
+            string path = (isHtml || isPdf ? "C:\\QFPrintApp\\PDF\\" : "C:\\QFPrintApp\\Receipts\\") + src.File;
+            if (!System.IO.File.Exists(path) && (isHtml || isPdf))
+            {
+                string url = "https://reports.quickflora.com/PDF/" + src.File;
+                if (isHtml) HtmlPrinter.TryDownload(url, path);
+                else try { EnsureFolderFor(path); new System.Net.WebClient().DownloadFile(url, path); } catch { }
+            }
+            if (!System.IO.File.Exists(path))
+            {
+                WriteToFile("REPRINT file=" + src.File + " printer=" + src.Printer + " FAILED - file not on this computer");
+                MessageBox.Show(this, "This document is no longer on this computer, so it can't be reprinted here.\r\nPrint the order again from QuickFlora.",
+                    Program.Caption("Reprint"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            DateTime started = DateTime.Now;
+            string doc, detail = "";
+            bool ok;
+            if (isHtml)
+            {
+                SetDefaultSystemPrinter(src.Printer);
+                doc = HtmlPrinter.TitleOf(path);
+                if (string.IsNullOrEmpty(doc)) doc = src.File;
+                SpoolWatch.Start(src.Printer, doc, started);
+                ok = HtmlPrinter.Print(path, src.Printer, doc, out detail);
+            }
+            else if (isPdf)
+            {
+                SetDefaultSystemPrinter(src.Printer);
+                doc = src.File;   // Adobe spools the PDF under its file name
+                SpoolWatch.Start(src.Printer, doc, started);
+                ok = true;
+                try { Pdf.PrintPDFs(path, txtadobe.Text, src.Printer); }
+                catch (Exception ex) { ok = false; ReportError("Reprint", src.File, ex); }
+            }
+            else
+            {
+                doc = "QuickFlora-Print";   // raw jobs are spooled under this name (clsPrinting)
+                string copy = path + ".reprint";
+                ok = false;
+                try
+                {
+                    System.IO.File.WriteAllBytes(copy, WithoutDrawerKick(System.IO.File.ReadAllBytes(path)));
+                    SpoolWatch.Start(src.Printer, doc, started);
+                    ok = QuickFloraEMV.RawPrinterHelper.SendFileToPrinter(src.Printer, copy);
+                }
+                catch (Exception ex) { ReportError("Reprint", src.File, ex); }
+                try { System.IO.File.Delete(copy); } catch { }
+            }
+            SetDefaultSystemPrinter(txtdefaultprinter.Text);
+
+            WriteToFile("REPRINT file=" + src.File + " printer=" + src.Printer + detail + " sent=" + (ok ? "ok" : "FAILED"));
+            JobRow j = AddJob(isHtml || isPdf ? "PDF" : "Text", src.File, src.Printer, ok, (DateTime.Now - started).TotalSeconds);
+            if (j == null) return;
+            j.Form = src.Form + " (reprint)";
+            j.Doc = doc;
+            if (ok)
+            {
+                j.Slno = 0;
+                j.Since = started;
+                j.Confirm = "Printing";
+                pendingConfirm.Add(j);
+                timerConfirm.Enabled = true;
+            }
+            RefreshJobList();
+        }
+
+        /// <summary>Drops cash-drawer kicks (BEL 0x07, ESC p m t1 t2) so a reprinted receipt does not open the drawer.</summary>
+        private static byte[] WithoutDrawerKick(byte[] b)
+        {
+            List<byte> outBytes = new List<byte>(b.Length);
+            for (int i = 0; i < b.Length; i++)
+            {
+                if (b[i] == 0x07) continue;
+                if (b[i] == 0x1B && i + 4 < b.Length && b[i + 1] == 0x70) { i += 4; continue; }
+                outBytes.Add(b[i]);
+            }
+            return outBytes.ToArray();
         }
 
         /// <summary>
