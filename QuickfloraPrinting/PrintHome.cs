@@ -405,7 +405,79 @@ namespace QuickfloraPrinting
         }
 
 
+        // ==================== AB#3163 (v4-2): live pickup ====================
+        // 4.0 asks the server once and the server holds the request (up to 25 s), answering the
+        // moment an order or print job exists for this terminal. On "yes" the normal ping/print
+        // flow below runs unchanged. A server without WaitForPrintJob (not yet upgraded) makes the
+        // app fall back to the 3.x 5-second ping for the rest of the session.
+        private bool useLivePickup = true;
+        private bool lastWaitSaidYes;
+        private int emptyYesCount;          // "yes" from the wait but the ping found nothing
+        private const int LiveWaitSeconds = 25;
+
+        private void StartLiveWait()
+        {
+            timer1.Enabled = false;
+            pingStarted = DateTime.Now;
+            QFPrintService.QFPrintService obj = new QFPrintService.QFPrintService();
+            obj.Timeout = (LiveWaitSeconds + 20) * 1000;
+            obj.WaitForPrintJobCompleted += new QFPrintService.WaitForPrintJobCompletedEventHandler(obj_WaitForPrintJobCompleted);
+            obj.WaitForPrintJobAsync(Program.CompanyID, Program.DivisionID, Program.DepartmentID, Program.TerminalName, LiveWaitSeconds);
+        }
+
+        void obj_WaitForPrintJobCompleted(object sender, QFPrintService.WaitForPrintJobCompletedEventArgs e)
+        {
+            bool hasWork = false;
+            try
+            {
+                hasWork = e.Result;
+            }
+            catch (Exception ex)
+            {
+                string msg = ex.ToString();
+                // Server without the method (old web service): SOAP "did not recognize ... SOAPAction"
+                // or "Unable to handle request without a valid action". Fall back for this session.
+                if (msg.IndexOf("WaitForPrintJob", StringComparison.OrdinalIgnoreCase) >= 0
+                    || msg.IndexOf("SOAPAction", StringComparison.OrdinalIgnoreCase) >= 0
+                    || msg.IndexOf("valid action", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    useLivePickup = false;
+                    WriteToFile("LIVE PICKUP not available on this server - using 5-second checks: " + ex.Message);
+                    timer1.Interval = 5000;
+                    timer1.Enabled = true;
+                    return;
+                }
+                ReportError("obj_WaitForPrintJobCompleted", "", ex);
+                NoteConnection(false);
+                ShowCurrentStatus();
+                timer1.Interval = 5000;   // network trouble: retry in 5 s, not in a tight loop
+                timer1.Enabled = true;
+                return;
+            }
+
+            NoteConnection(true);
+            lblConn.Text = "\u25CF  Connected \u00B7 live";
+            lbltimer.Text = DateTime.Now.ToLongTimeString();
+            if (hasWork)
+            {
+                lastWaitSaidYes = true;
+                PingNow();             // the normal 3.x flow: server creates the jobs, app prints them
+            }
+            else
+            {
+                lastWaitSaidYes = false;
+                ShowCurrentStatus();
+                StartLiveWait();       // nothing yet: ask again straight away
+            }
+        }
+
         private void timer1_Tick(object sender, EventArgs e)
+        {
+            if (useLivePickup) { StartLiveWait(); return; }
+            PingNow();
+        }
+
+        private void PingNow()
         {
             lbltimer.Text = DateTime.Now.ToLongTimeString() ; 
  
@@ -439,6 +511,8 @@ namespace QuickfloraPrinting
 
             if (chk == "True")
             {
+                emptyYesCount = 0;
+                if (useLivePickup) timer1.Interval = 300;   // after this job, go straight back to waiting
                 lblprintrequest.Text = "New Print Request Found";
                 lblprintrequest.ForeColor = Color.Green;
                 lbltimer.ForeColor = Color.Red;
@@ -448,6 +522,15 @@ namespace QuickfloraPrinting
             }
             else
             {
+                // AB#3163: if the server said "yes" but the ping found nothing (e.g. an order the
+                // server cannot turn into a job), don't spin: wait 5 s before asking again.
+                if (useLivePickup)
+                {
+                    if (lastWaitSaidYes) emptyYesCount++;
+                    timer1.Interval = emptyYesCount > 0 ? 5000 : 300;
+                    if (emptyYesCount == 3) WriteToFile("LIVE PICKUP: server keeps reporting work the ping cannot find - backing off to 5 s");
+                }
+                lastWaitSaidYes = false;
                 timer1.Enabled = true;
                 lblprintrequest.Text = "No Print Request Present";
                 lblprintrequest.ForeColor = Color.Red ;
@@ -502,6 +585,8 @@ namespace QuickfloraPrinting
                 PrintText2 = objDataTable.Rows[0]["PrintText2"].ToString();
                 FileName = objDataTable.Rows[0]["FileName"].ToString();
                 slno = Convert.ToInt32(objDataTable.Rows[0]["slno"].ToString());
+                // AB#3163: when the job reached this PC, and how (live pickup or 5-second check).
+                WriteToFile("PICKUP slno=" + slno + " file=" + FileName + " via " + (useLivePickup ? "live" : "poll"));
 
                 System.Net.WebClient wc = new System.Net.WebClient();
 
