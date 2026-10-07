@@ -27,12 +27,12 @@ namespace QuickfloraPrinting
 
     /// <summary>
     /// AB#3189: the round badge at the left of the status card. Green tick when printing is
-    /// working, red "!" when it needs attention. Drawn rather than an image so it stays sharp at
+    /// working, amber "!" for a warning (e.g. no remote support), red "!" when not printing. Drawn rather than an image so it stays sharp at
     /// any display scale.
     /// </summary>
     public class StatusBadge : Control
     {
-        private bool attention;
+        private int level;
 
         public StatusBadge()
         {
@@ -41,10 +41,11 @@ namespace QuickfloraPrinting
             BackColor = Color.White;
         }
 
-        public bool Attention
+        /// <summary>0 = green tick, 1 = amber "!", 2 = red "!".</summary>
+        public int Level
         {
-            get { return attention; }
-            set { attention = value; Invalidate(); }
+            get { return level; }
+            set { level = value; Invalidate(); }
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -55,8 +56,13 @@ namespace QuickfloraPrinting
             int d = Math.Min(Math.Min(Width - 16, Height), (int)(52 * g.DpiX / 96f));
             if (d <= 0) return;
             int x = 0, y = (Height - d) / 2;
-            Color fill = attention ? Color.FromArgb(246, 211, 207) : Color.FromArgb(227, 241, 232);
-            Color mark = attention ? Color.FromArgb(161, 35, 27) : Color.FromArgb(11, 107, 55);
+            bool attention = level > 0;
+            Color fill = level == 2 ? Color.FromArgb(246, 211, 207)
+                       : level == 1 ? Color.FromArgb(252, 235, 211)
+                       : Color.FromArgb(227, 241, 232);
+            Color mark = level == 2 ? Color.FromArgb(161, 35, 27)
+                       : level == 1 ? Color.FromArgb(166, 90, 8)
+                       : Color.FromArgb(11, 107, 55);
             using (SolidBrush b = new SolidBrush(fill)) g.FillEllipse(b, x, y, d, d);
             using (Pen p = new Pen(mark, Math.Max(2f, d / 20f)))
             {

@@ -28,6 +28,7 @@ namespace QuickfloraPrinting
         private double lastPingSeconds;
         private JobRow lastJob;
         private string printerProblem;      // configured printer's fault, or null when fine
+        private string rmmState;            // null until the first check has run
         private readonly List<JobRow> jobs = new List<JobRow>();
 
         public PrintHome(bool startMinimized)
@@ -670,15 +671,21 @@ namespace QuickfloraPrinting
         /// <summary>Sets the status banner. Green = fine, amber = attention needed.</summary>
         private void SetStatus(string headline, string detail, bool attention)
         {
+            SetStatus(headline, detail, attention ? 2 : 0);
+        }
+
+        /// <summary>AB#3189: level 0 = fine (green tick), 1 = needs attention soon (amber), 2 = not printing (red).</summary>
+        private void SetStatus(string headline, string detail, int level)
+        {
             try
             {
                 lblStatus.Text = headline;
                 lblStatusSub.Text = detail;
-                // AB#3189: dark red / near-black so the headline passes 4.5:1 on white.
-                lblStatus.ForeColor = attention
-                    ? Color.FromArgb(126, 27, 21)
-                    : Color.FromArgb(28, 33, 29);
-                badgeStatus.Attention = attention;
+                // Dark red / dark amber / near-black so the headline passes 4.5:1 on white.
+                lblStatus.ForeColor = level == 2 ? Color.FromArgb(126, 27, 21)
+                                    : level == 1 ? Color.FromArgb(122, 66, 6)
+                                    : Color.FromArgb(28, 33, 29);
+                badgeStatus.Level = level;
             }
             catch { }
         }
@@ -740,6 +747,15 @@ namespace QuickfloraPrinting
                 return;
             }
 
+            // AB#3189: raw receipt-printer bytes only make sense on a receipt printer. Sent to an
+            // office printer (Canon G6010 on the Lenovo, 7 Oct 2026) Windows says "complete", nothing
+            // prints, and the printer can be left in an error state. Office printers get a normal page.
+            if (!IsReceiptPrinter(printer))
+            {
+                PrintNormalTestPage(printer);
+                return;
+            }
+
             try
             {
                 StringBuilder sb = new StringBuilder();
@@ -767,6 +783,83 @@ namespace QuickfloraPrinting
             catch (Exception ex)
             {
                 ReportError("btnTestPrint_Click", "", ex);
+                MessageBox.Show("Could not print.\r\n\r\n" + ex.Message,
+                    Program.Caption("Test failed"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// Receipt (thermal / POS) printer, judged by its Windows driver. Unknown or unreadable is
+        /// treated as a receipt printer so the 3.4 behaviour is kept when in doubt.
+        /// </summary>
+        private static bool IsReceiptPrinter(string printer)
+        {
+            try
+            {
+                string driver = "";
+                using (ManagementObjectSearcher s = new ManagementObjectSearcher(
+                    "SELECT Name, DriverName FROM Win32_Printer"))
+                {
+                    foreach (ManagementObject o in s.Get())
+                        if (Convert.ToString(o["Name"]).Equals(printer, StringComparison.OrdinalIgnoreCase))
+                            driver = Convert.ToString(o["DriverName"]);
+                }
+                if (driver.Length == 0) return true;
+                string d = driver.ToUpperInvariant();
+                foreach (string k in new string[] { "TM-", "TM ", "STAR", "TSP", "POS", "RECEIPT", "THERMAL",
+                                                    "TEXT ONLY", "80MM", "58MM", "BIXOLON", "CITIZEN", "SNBC", "XPRINTER", "ZJ-" })
+                    if (d.Contains(k)) return true;
+                return false;
+            }
+            catch { return true; }
+        }
+
+        /// <summary>A normal one-page test for an office printer, sent through its Windows driver.</summary>
+        private void PrintNormalTestPage(string printer)
+        {
+            try
+            {
+                string[] lines = new string[] {
+                    "QuickFlora test print",
+                    "",
+                    "Company:   " + txtcmp.Text,
+                    "Terminal:  " + txtTerminal.Text,
+                    "Printer:   " + printer,
+                    "Time:      " + DateTime.Now.ToString("dd MMM yyyy  h:mm:ss tt"),
+                    "Version:   QuickFlora Print App " + Program.AppVersion,
+                    "",
+                    "If you can read this, this printer works from QuickFlora.",
+                    "Note: this is not a receipt printer. Receipts are made for",
+                    "receipt printers and may not print here; worksheets and",
+                    "card messages will." };
+                using (PrintDocument pd = new PrintDocument())
+                {
+                    pd.PrinterSettings.PrinterName = printer;
+                    pd.DocumentName = "QuickFlora test print";
+                    pd.PrintPage += delegate(object s, PrintPageEventArgs ev)
+                    {
+                        using (Font title = new Font("Segoe UI", 18F, FontStyle.Bold))
+                        using (Font body = new Font("Consolas", 11F))
+                        {
+                            float x = ev.MarginBounds.Left, y = ev.MarginBounds.Top;
+                            ev.Graphics.DrawString(lines[0], title, Brushes.Black, x, y);
+                            y += title.GetHeight(ev.Graphics) * 1.6f;
+                            for (int i = 1; i < lines.Length; i++)
+                            {
+                                ev.Graphics.DrawString(lines[i], body, Brushes.Black, x, y);
+                                y += body.GetHeight(ev.Graphics) * 1.3f;
+                            }
+                        }
+                        ev.HasMorePages = false;
+                    };
+                    pd.Print();
+                }
+                SetStatus("Test print sent", "Sent a normal test page to " + printer + " (office printer, not a receipt printer)", false);
+            }
+            catch (Exception ex)
+            {
+                ReportError("PrintNormalTestPage", "", ex);
+                SetStatus("Test print failed", "Windows rejected the job for " + printer, true);
                 MessageBox.Show("Could not print.\r\n\r\n" + ex.Message,
                     Program.Caption("Test failed"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -1043,6 +1136,15 @@ namespace QuickfloraPrinting
                     + " at " + lastJob.When.ToString("h:mm tt") + ". Use Print test page to check the printer.", true);
                 return;
             }
+            // v4 rule: the RMM agent on every print PC. Printing still works, so amber, not red —
+            // but every shop without it sees this and can tell us.
+            if (rmmState != null && rmmState != "Connected" && rmmState != "Unknown")
+            {
+                SetStatus(rmmState == "Not installed" ? "Remote support is not set up on this PC"
+                                                      : "Remote support is not connected",
+                    "Printing is working. Call QuickFlora support (support@quickflora.com) so we can fix problems on this PC remotely.", 1);
+                return;
+            }
             string sub = lastJob == null
                 ? "Connected. Waiting for the next order."
                 : "Last job: " + lastJob.Form.ToLower() + " sent to " + lastJob.Printer
@@ -1115,7 +1217,7 @@ namespace QuickfloraPrinting
             try
             {
                 using (ManagementObjectSearcher s = new ManagementObjectSearcher(
-                    "SELECT Name, WorkOffline, PrinterStatus, DetectedErrorState FROM Win32_Printer"))
+                    "SELECT Name, PortName, WorkOffline, PrinterStatus, DetectedErrorState FROM Win32_Printer"))
                 {
                     foreach (ManagementObject o in s.Get()) found[Convert.ToString(o["Name"])] = o;
                 }
@@ -1127,23 +1229,127 @@ namespace QuickfloraPrinting
                 string state; int sev;
                 ManagementObject o;
                 if (!found.TryGetValue(n, out o)) { state = "Not installed"; sev = 2; }
-                else PrinterState(o, out state, out sev);
+                else
+                {
+                    PrinterState(o, out state, out sev);
+                    // Windows often says "Ready" for a network printer that is actually stopped
+                    // (Canon G6010 on the Lenovo, 7 Oct 2026: Windows Ready, printer in error).
+                    // Two checks Windows does not do for us:
+                    if (sev < 2) LastJobState(n, ref state, ref sev);
+                    if (sev < 2) NetworkState(Convert.ToString(o["PortName"]), ref state, ref sev);
+                }
                 h.Printers.Add(new string[] { n, state, sev.ToString() });
                 if (n == configured && sev == 2) h.ConfiguredProblem = state;
             }
 
+            h.Rmm = RmmState();
+            return h;
+        }
+
+        /// <summary>
+        /// The newest job Windows still holds for this printer. If it ended in error, offline or out
+        /// of paper in the last hour, the printer has a problem whatever its status says. A later
+        /// good job clears it, because only the newest job counts.
+        /// </summary>
+        private static void LastJobState(string printer, ref string state, ref int severity)
+        {
             try
             {
+                DateTime newest = DateTime.MinValue; int mask = 0;
                 using (ManagementObjectSearcher s = new ManagementObjectSearcher(
-                    "SELECT State FROM Win32_Service WHERE Name='tacticalrmm'"))
+                    "SELECT Name, StatusMask, TimeSubmitted FROM Win32_PrintJob"))
                 {
-                    h.Rmm = "Not installed";
-                    foreach (ManagementObject o in s.Get())
-                        h.Rmm = Convert.ToString(o["State"]) == "Running" ? "Running" : "Installed, not running";
+                    foreach (ManagementObject j in s.Get())
+                    {
+                        string name = Convert.ToString(j["Name"]);   // "Printer Name, 12"
+                        int comma = name.LastIndexOf(',');
+                        if (comma <= 0 || !name.Substring(0, comma).Equals(printer, StringComparison.OrdinalIgnoreCase)) continue;
+                        DateTime t = ManagementDateTimeConverter.ToDateTime(Convert.ToString(j["TimeSubmitted"]));
+                        if (t > newest) { newest = t; mask = Convert.ToInt32(j["StatusMask"]); }
+                    }
                 }
+                if (newest == DateTime.MinValue || (DateTime.Now - newest).TotalMinutes > 60) return;
+                // JOB_STATUS_* flags: 2 error, 32 offline, 64 paper out, 512 blocked, 1024 user intervention
+                if ((mask & 64) != 0) { state = "Out of paper"; severity = 2; }
+                else if ((mask & 32) != 0) { state = "Offline"; severity = 2; }
+                else if ((mask & (2 | 512 | 1024)) != 0) { state = "Error on last job"; severity = 2; }
             }
-            catch { h.Rmm = "Unknown"; }
-            return h;
+            catch { }
+        }
+
+        /// <summary>For a printer on a TCP/IP port: does anything answer on a printing port? Same
+        /// ports and spirit as agent\PrinterWatch.ps1. USB and other ports are skipped.</summary>
+        private static void NetworkState(string portName, ref string state, ref int severity)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(portName)) return;
+                string host = null;
+                System.Net.IPAddress ip;
+                if (System.Net.IPAddress.TryParse(portName, out ip)) host = portName;
+                else
+                {
+                    using (ManagementObjectSearcher s = new ManagementObjectSearcher(
+                        "SELECT HostAddress FROM Win32_TCPIPPrinterPort WHERE Name='" + portName.Replace("\\", "\\\\").Replace("'", "\\'") + "'"))
+                    {
+                        foreach (ManagementObject p in s.Get()) host = Convert.ToString(p["HostAddress"]);
+                    }
+                }
+                if (string.IsNullOrEmpty(host)) return;
+                foreach (int port in new int[] { 9100, 631, 515 })
+                {
+                    using (System.Net.Sockets.TcpClient c = new System.Net.Sockets.TcpClient())
+                    {
+                        IAsyncResult ar = c.BeginConnect(host, port, null, null);
+                        if (ar.AsyncWaitHandle.WaitOne(800) && c.Connected) return;
+                    }
+                }
+                state = "Not reachable on the network"; severity = 2;
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Tactical RMM agent: installed? running? and actually connected to our RMM server (it
+        /// keeps an open connection while connected)? "Running" alone does not mean we can reach
+        /// the PC — a shop firewall can block it.
+        /// </summary>
+        private static string RmmState()
+        {
+            try
+            {
+                int pid = 0; string svcState = null;
+                using (ManagementObjectSearcher s = new ManagementObjectSearcher(
+                    "SELECT State, ProcessId FROM Win32_Service WHERE Name='tacticalrmm'"))
+                {
+                    foreach (ManagementObject o in s.Get())
+                    {
+                        svcState = Convert.ToString(o["State"]);
+                        pid = Convert.ToInt32(o["ProcessId"]);
+                    }
+                }
+                if (svcState == null) return "Not installed";
+                if (svcState != "Running" || pid <= 0) return "Installed, not running";
+
+                ProcessStartInfo psi = new ProcessStartInfo("netstat.exe", "-ano -p TCP");
+                psi.UseShellExecute = false; psi.RedirectStandardOutput = true; psi.CreateNoWindow = true;
+                using (Process p = Process.Start(psi))
+                {
+                    string output = p.StandardOutput.ReadToEnd();
+                    p.WaitForExit(5000);
+                    string pidText = pid.ToString();
+                    foreach (string line in output.Split('\n'))
+                    {
+                        string[] f = line.Trim().Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                        // Proto  Local  Foreign  State  PID
+                        if (f.Length >= 5 && f[3] == "ESTABLISHED" && f[4] == pidText &&
+                            !f[2].StartsWith("127.") && !f[2].StartsWith("[::1]"))
+                            return "Connected";
+                    }
+                }
+                return "Running, not connected";
+            }
+            catch { return "Unknown"; }
         }
 
         /// <summary>Same wording as agent\PrinterWatch.ps1 so the shop and support see the same words.</summary>
@@ -1180,7 +1386,8 @@ namespace QuickfloraPrinting
             {
                 lblIp.Text = h.Ip;
                 lblRmm.Text = h.Rmm;
-                lblRmm.ForeColor = h.Rmm == "Running" ? Color.FromArgb(11, 90, 48) : Color.FromArgb(161, 35, 27);
+                lblRmm.ForeColor = h.Rmm == "Connected" ? Color.FromArgb(11, 90, 48) : Color.FromArgb(161, 35, 27);
+                rmmState = h.Rmm;
 
                 lstPrinters.BeginUpdate();
                 lstPrinters.Items.Clear();
