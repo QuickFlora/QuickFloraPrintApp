@@ -19,6 +19,20 @@ namespace QuickfloraPrinting
         private bool startMinimized;
         private bool loadingSettings;
 
+        // AB#3189 (v3.5) — screen state. Display only; the print loop does not read any of this.
+        private string configPath = "";
+        private DateTime pingStarted = DateTime.MinValue;
+        private DateTime lastPingOk = DateTime.MinValue;
+        private bool pingFailing;
+        private int pingFailures;
+        private double lastPingSeconds;
+        private JobRow lastJob;
+        private string printerProblem;      // fault on a printer orders are going to, or null when fine
+        private string problemPrinter;      // which printer that is
+        private int problemWaiting;         // jobs Windows is still holding for it
+        private string rmmState;            // null until the first check has run
+        private readonly List<JobRow> jobs = new List<JobRow>();
+
         public PrintHome(bool startMinimized)
         {
             this.startMinimized = startMinimized;
@@ -55,7 +69,7 @@ namespace QuickfloraPrinting
                 //they understand they didn't close the app they just sent it to the tray.
                 this.WindowState = FormWindowState.Minimized;
                 //Show the message.
-                notifyIcon1.ShowBalloonTip(3000, "QuickFlora Printing",
+                notifyIcon1.ShowBalloonTip(3000, Program.WindowTitle,
                     "QuickFlora Printing Process is running." +
                     (Char)(13) + "It has be moved to the tray." +
                     (Char)(13) + "Right click the Icon to exit.",
@@ -76,7 +90,7 @@ namespace QuickfloraPrinting
             if (this.WindowState == FormWindowState.Minimized)
             {
                 this.Hide();
-                notifyIcon1.ShowBalloonTip(3000, "QuickFlora Printing App",
+                notifyIcon1.ShowBalloonTip(3000, Program.WindowTitle,
                     "QuickFlora Printing Process is running.",
                     ToolTipIcon.Info);
             }
@@ -89,7 +103,7 @@ namespace QuickfloraPrinting
         private void exitToolStripMenuItem_Click(object sender, EventArgs e)
         {
             DialogResult y;
-            y = MessageBox.Show("Are you sure to Exit?", "Please confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            y = MessageBox.Show("Are you sure to Exit?", Program.Caption("Please confirm"), MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
             if (y.ToString().ToUpper() == "YES")
                 Application.ExitThread();
         }
@@ -298,7 +312,7 @@ namespace QuickfloraPrinting
             MessageBox.Show(
                 "QuickFlora Print has not been set up yet, so it cannot start.\r\n\r\n" +
                 "Run it again and complete the setup, or email support@quickflora.com.",
-                "Setup not completed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                Program.Caption("Setup not completed"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
             return candidates[0];
         }
@@ -326,7 +340,8 @@ namespace QuickfloraPrinting
 
             timer1.Enabled = true;
 
-            string[] lines = System.IO.File.ReadAllLines(ResolveConfigPath());
+            configPath = ResolveConfigPath();
+            string[] lines = System.IO.File.ReadAllLines(configPath);
             // Display the file contents by using a foreach loop.
             int n = 1;
 
@@ -373,9 +388,17 @@ namespace QuickfloraPrinting
                     txtdefaultprinter.Text = line;
                     txtdefaultprinter.Enabled = false;
                 }
-               
+
                 n = n + 1;
             }
+
+            // AB#3189: fill the new screen from the values just read.
+            lblShop.Text = txtcmp.Text;
+            lblTerminalName.Text = "Terminal " + txtTerminal.Text;
+            LoadTodaysJobsFromLog();
+            RefreshJobList();
+            RefreshHealthAsync();
+            timerHealth.Enabled = true;
         }
 
 
@@ -383,6 +406,7 @@ namespace QuickfloraPrinting
         {
             lbltimer.Text = DateTime.Now.ToLongTimeString() ; 
  
+            pingStarted = DateTime.Now;
             QFPrintService.QFPrintService obj = new QFPrintService.QFPrintService();
             obj.PingPOSForPrintingCompleted += new QFPrintService.PingPOSForPrintingCompletedEventHandler(obj_PingPOSForPrintingCompleted);
             obj.PingPOSForPrintingAsync(Program.CompanyID, Program.DivisionID, Program.DepartmentID, Program.TerminalName );
@@ -394,11 +418,13 @@ namespace QuickfloraPrinting
         void obj_PingPOSForPrintingCompleted(object sender, QFPrintService.PingPOSForPrintingCompletedEventArgs e)
         {
             string chk = "";
+            bool reached = false;
 
 
             try
             {
                 chk = e.Result.ToString();
+                reached = true;
             }
             catch (Exception ex)
             {
@@ -406,6 +432,7 @@ namespace QuickfloraPrinting
                 //   label1.Text += " Wait...";
                 // return;
             }
+            NoteConnection(reached);
 
             if (chk == "True")
             {
@@ -421,7 +448,9 @@ namespace QuickfloraPrinting
                 timer1.Enabled = true;
                 lblprintrequest.Text = "No Print Request Present";
                 lblprintrequest.ForeColor = Color.Red ;
-                SetStatus("Printing is working", "Connected. Waiting for the next receipt.", false);
+                // AB#3189: 3.4 said "Printing is working" here even when the server could not be
+                // reached (a failed ping lands in this branch too). ShowCurrentStatus tells the truth.
+                ShowCurrentStatus();
                 lbltimer.ForeColor = Color.Green;
             }
 
@@ -459,6 +488,8 @@ namespace QuickfloraPrinting
             string PrintText2 = "";
             string FileName = "";
             int slno = 0;
+            DateTime jobStarted = DateTime.Now;   // AB#3189: for the "Took" column
+            bool jobShown = false;
 
             try
             {
@@ -485,6 +516,8 @@ namespace QuickfloraPrinting
                     string detail = InspectPrintFile("C:\\QFPrintApp\\Receipts\\" + filename, out hadDrawer, out fileSize);
                     bool sentOk = QuickFloraEMV.RawPrinterHelper.SendFileToPrinter(PrintText2, "C:\\QFPrintApp\\Receipts\\" + filename);
                     LogPrintJob(PrintText, filename, slno, PrintText2, detail, hadDrawer, fileSize, sentOk);
+                    AddJob(PrintText, filename, PrintText2, sentOk, (DateTime.Now - jobStarted).TotalSeconds);
+                    jobShown = true;
                 }
 
                 if (PrintText == "PDF")
@@ -524,6 +557,8 @@ namespace QuickfloraPrinting
 
                     }
                     LogPrintJob(PrintText, filename, slno, PrintText2, pdfDetail, pdfDrawer, pdfSize, pdfSent);
+                    AddJob(PrintText, filename, PrintText2, pdfSent, (DateTime.Now - jobStarted).TotalSeconds);
+                    jobShown = true;
                     //Pdf.PrintPDFs("C:\\QFPrintApp\\PDF\\" + PrintText2 + "_" + filename, txtadobe.Text, PrintText2);
 
                 }
@@ -554,6 +589,9 @@ namespace QuickfloraPrinting
             catch (Exception ex)
             {
                 ReportError("obj_CheckPOSForPrintingCompleted", "", ex);
+                // AB#3189: a download or send that threw used to vanish from the screen. Show it.
+                if (!jobShown && FileName.Length > 0)
+                    AddJob(PrintText, FileName, PrintText2, false, (DateTime.Now - jobStarted).TotalSeconds);
 
             }
 
@@ -598,7 +636,7 @@ namespace QuickfloraPrinting
                 if (pd.PrinterSettings.IsValid == false)
                 {
                     param[0] = sOldPrinter;
-                   // MessageBox.Show("Printer <" + sPrinterName + "> is invalid. \n The default printer will be used.", "Error with Printer", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                   // MessageBox.Show("Printer <" + sPrinterName + "> is invalid. \n The default printer will be used.", Program.Caption("Error with Printer"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                     Microsoft.VisualBasic.Interaction.CallByName(WshNetwork, "SetDefaultPrinter", Microsoft.VisualBasic.CallType.Method, param);
                 }
 
@@ -609,7 +647,7 @@ namespace QuickfloraPrinting
             {
                 //Revert to original default
                 param[0] = sOldPrinter;
-               // MessageBox.Show("Printer <" + sPrinterName + "> is invalid. \n The default printer will be used.", "Error with Printer", MessageBoxButtons.OK, MessageBoxIcon.Information);
+               // MessageBox.Show("Printer <" + sPrinterName + "> is invalid. \n The default printer will be used.", Program.Caption("Error with Printer"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                 Microsoft.VisualBasic.Interaction.CallByName(WshNetwork, "SetDefaultPrinter", Microsoft.VisualBasic.CallType.Method, param);
 
             }
@@ -635,14 +673,21 @@ namespace QuickfloraPrinting
         /// <summary>Sets the status banner. Green = fine, amber = attention needed.</summary>
         private void SetStatus(string headline, string detail, bool attention)
         {
+            SetStatus(headline, detail, attention ? 2 : 0);
+        }
+
+        /// <summary>AB#3189: level 0 = fine (green tick), 1 = needs attention soon (amber), 2 = not printing (red).</summary>
+        private void SetStatus(string headline, string detail, int level)
+        {
             try
             {
                 lblStatus.Text = headline;
                 lblStatusSub.Text = detail;
-                // PMS 486 for attention states, PMS 348 otherwise — per Brand Guidelines Ed.2
-                lblStatus.ForeColor = attention
-                    ? Color.FromArgb(204, 124, 104)
-                    : Color.FromArgb(3, 106, 55);
+                // Dark red / dark amber / near-black so the headline passes 4.5:1 on white.
+                lblStatus.ForeColor = level == 2 ? Color.FromArgb(126, 27, 21)
+                                    : level == 1 ? Color.FromArgb(122, 66, 6)
+                                    : Color.FromArgb(28, 33, 29);
+                badgeStatus.Level = level;
             }
             catch { }
         }
@@ -659,7 +704,7 @@ namespace QuickfloraPrinting
             if (printer.Length == 0)
             {
                 MessageBox.Show("No printer is configured for this terminal.\r\n\r\nCheck line 6 of Config.txt.",
-                    "No printer set", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    Program.Caption("No printer set"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -675,21 +720,21 @@ namespace QuickfloraPrinting
                         "DID THE DRAWER OPEN?\r\n\r\n" +
                         "YES  - the drawer and cabling are fine. Any problem is in the receipt itself.\r\n" +
                         "NO   - the problem is the printer, the cable, or the drawer. Not the software.",
-                        "Cash drawer test", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        Program.Caption("Cash drawer test"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 else
                 {
                     SetStatus("Cash drawer test failed", "Windows would not accept the job for " + printer, true);
                     MessageBox.Show("Windows would not send to this printer:\r\n\r\n    " + printer +
                         "\r\n\r\nCheck the printer is switched on and the name matches exactly.",
-                        "Test failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        Program.Caption("Test failed"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
             catch (Exception ex)
             {
                 ReportError("btnTestDrawer_Click", "", ex);
                 MessageBox.Show("Could not send to the printer.\r\n\r\n" + ex.Message,
-                    "Test failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    Program.Caption("Test failed"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -700,7 +745,16 @@ namespace QuickfloraPrinting
             if (printer.Length == 0)
             {
                 MessageBox.Show("No printer is configured for this terminal.\r\n\r\nCheck line 6 of Config.txt.",
-                    "No printer set", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    Program.Caption("No printer set"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // AB#3189: raw receipt-printer bytes only make sense on a receipt printer. Sent to an
+            // office printer (Canon G6010 on the Lenovo, 7 Oct 2026) Windows says "complete", nothing
+            // prints, and the printer can be left in an error state. Office printers get a normal page.
+            if (!IsReceiptPrinter(printer))
+            {
+                PrintNormalTestPage(printer);
                 return;
             }
 
@@ -725,14 +779,91 @@ namespace QuickfloraPrinting
                 if (!ok)
                 {
                     MessageBox.Show("Windows would not send to this printer:\r\n\r\n    " + printer,
-                        "Test failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        Program.Caption("Test failed"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
             catch (Exception ex)
             {
                 ReportError("btnTestPrint_Click", "", ex);
                 MessageBox.Show("Could not print.\r\n\r\n" + ex.Message,
-                    "Test failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    Program.Caption("Test failed"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// Receipt (thermal / POS) printer, judged by its Windows driver. Unknown or unreadable is
+        /// treated as a receipt printer so the 3.4 behaviour is kept when in doubt.
+        /// </summary>
+        private static bool IsReceiptPrinter(string printer)
+        {
+            try
+            {
+                string driver = "";
+                using (ManagementObjectSearcher s = new ManagementObjectSearcher(
+                    "SELECT Name, DriverName FROM Win32_Printer"))
+                {
+                    foreach (ManagementObject o in s.Get())
+                        if (Convert.ToString(o["Name"]).Equals(printer, StringComparison.OrdinalIgnoreCase))
+                            driver = Convert.ToString(o["DriverName"]);
+                }
+                if (driver.Length == 0) return true;
+                string d = driver.ToUpperInvariant();
+                foreach (string k in new string[] { "TM-", "TM ", "STAR", "TSP", "POS", "RECEIPT", "THERMAL",
+                                                    "TEXT ONLY", "80MM", "58MM", "BIXOLON", "CITIZEN", "SNBC", "XPRINTER", "ZJ-" })
+                    if (d.Contains(k)) return true;
+                return false;
+            }
+            catch { return true; }
+        }
+
+        /// <summary>A normal one-page test for an office printer, sent through its Windows driver.</summary>
+        private void PrintNormalTestPage(string printer)
+        {
+            try
+            {
+                string[] lines = new string[] {
+                    "QuickFlora test print",
+                    "",
+                    "Company:   " + txtcmp.Text,
+                    "Terminal:  " + txtTerminal.Text,
+                    "Printer:   " + printer,
+                    "Time:      " + DateTime.Now.ToString("dd MMM yyyy  h:mm:ss tt"),
+                    "Version:   QuickFlora Print App " + Program.AppVersion,
+                    "",
+                    "If you can read this, this printer works from QuickFlora.",
+                    "Note: this is not a receipt printer. Receipts are made for",
+                    "receipt printers and may not print here; worksheets and",
+                    "card messages will." };
+                using (PrintDocument pd = new PrintDocument())
+                {
+                    pd.PrinterSettings.PrinterName = printer;
+                    pd.DocumentName = "QuickFlora test print";
+                    pd.PrintPage += delegate(object s, PrintPageEventArgs ev)
+                    {
+                        using (Font title = new Font("Segoe UI", 18F, FontStyle.Bold))
+                        using (Font body = new Font("Consolas", 11F))
+                        {
+                            float x = ev.MarginBounds.Left, y = ev.MarginBounds.Top;
+                            ev.Graphics.DrawString(lines[0], title, Brushes.Black, x, y);
+                            y += title.GetHeight(ev.Graphics) * 1.6f;
+                            for (int i = 1; i < lines.Length; i++)
+                            {
+                                ev.Graphics.DrawString(lines[i], body, Brushes.Black, x, y);
+                                y += body.GetHeight(ev.Graphics) * 1.3f;
+                            }
+                        }
+                        ev.HasMorePages = false;
+                    };
+                    pd.Print();
+                }
+                SetStatus("Test print sent", "Sent a normal test page to " + printer + " (office printer, not a receipt printer)", false);
+            }
+            catch (Exception ex)
+            {
+                ReportError("PrintNormalTestPage", "", ex);
+                SetStatus("Test print failed", "Windows rejected the job for " + printer, true);
+                MessageBox.Show("Could not print.\r\n\r\n" + ex.Message,
+                    Program.Caption("Test failed"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -749,7 +880,7 @@ namespace QuickfloraPrinting
             {
                 ReportError("btnOpenReceipts_Click", "", ex);
                 MessageBox.Show("Could not open " + folder + "\r\n\r\n" + ex.Message,
-                    "Could not open folder", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    Program.Caption("Could not open folder"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -777,6 +908,18 @@ namespace QuickfloraPrinting
                 sb.AppendLine();
                 sb.AppendLine("Status    : " + lblStatus.Text + " - " + lblStatusSub.Text);
                 sb.AppendLine("Activity  : " + lblprintrequest.Text);
+                sb.AppendLine("Server    : " + lblConn.Text.Replace("●", "").Trim()
+                    + (lastPingOk == DateTime.MinValue ? "" : " (last reached " + lastPingOk.ToString("h:mm:ss tt") + ")"));
+                sb.AppendLine("IP address: " + lblIp.Text);
+                sb.AppendLine("Remote support: " + lblRmm.Text);
+                sb.AppendLine();
+                sb.AppendLine("Recent print jobs:");
+                for (int i = 0; i < jobs.Count && i < 10; i++)
+                {
+                    JobRow j = jobs[i];
+                    sb.AppendLine("   " + j.When.ToString("h:mm:ss tt") + "  " + j.Form + "  " + j.File
+                        + "  -> " + j.Printer + "  " + (j.Ok ? "sent" : "FAILED") + "  " + j.TookText);
+                }
                 sb.AppendLine();
                 sb.AppendLine("Printers this PC can see:");
                 foreach (string p in PrinterSettings.InstalledPrinters)
@@ -799,14 +942,575 @@ namespace QuickfloraPrinting
                 MessageBox.Show(
                     "Support details copied to the clipboard.\r\n\r\n" +
                     "Paste them into an email to support@quickflora.com along with what went wrong.",
-                    "Copied", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    Program.Caption("Copied"), MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
                 ReportError("btnCopyDiag_Click", "", ex);
                 MessageBox.Show("Could not gather details.\r\n\r\n" + ex.Message,
-                    "Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    Program.Caption("Failed"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        // ==================== AB#3189 — v3.5 screen ====================
+        // Everything below only reads state and updates the screen. None of it is on the print
+        // path: if any of it fails, printing carries on exactly as in 3.4.
+
+        private class JobRow
+        {
+            public DateTime When;
+            public string Form;
+            public string File;
+            public string Printer;
+            public bool Ok;
+            public bool Waiting;          // Windows still holds it and the printer has a fault
+            public double Seconds = -1;   // -1 = unknown (rows read back from the log)
+
+            public string TookText
+            {
+                get { return Seconds < 0 ? "\u2014" : Seconds.ToString("0.0") + " s"; }
+            }
+        }
+
+        /// <summary>"Text" = raw receipt; a PDF is named after its form, e.g. Card_..., Worksheet_...</summary>
+        private static string FormName(string type, string file)
+        {
+            if (type == "Text") return "Receipt";
+            string f = file == null ? "" : file;
+            int u = f.IndexOf('_');
+            string prefix = u > 0 ? f.Substring(0, u) : "";
+            if (prefix.Equals("Card", StringComparison.OrdinalIgnoreCase)) return "Card message";
+            if (prefix.Length > 0 && prefix.Length <= 20) return prefix;
+            return "PDF";
+        }
+
+        private void AddJob(string type, string file, string printer, bool ok, double seconds)
+        {
+            try
+            {
+                JobRow j = new JobRow();
+                j.When = DateTime.Now; j.Form = FormName(type, file); j.File = file;
+                j.Printer = printer; j.Ok = ok; j.Seconds = seconds;
+                jobs.Insert(0, j);
+                if (jobs.Count > 50) jobs.RemoveAt(jobs.Count - 1);
+                lastJob = j;
+                RefreshJobList();
+                ShowCurrentStatus();
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Rebuilds today's list from the AB#1323 log after a restart, so the screen is not empty
+        /// the morning after a reboot. Time taken is not in the log, so those rows show a dash.
+        /// </summary>
+        private void LoadTodaysJobsFromLog()
+        {
+            try
+            {
+                string path = System.IO.Path.Combine(
+                    System.IO.Path.Combine(System.IO.Path.GetDirectoryName(Application.ExecutablePath), "Logs"),
+                    "AppLog_" + DateTime.Now.ToString("yyyy_MM_dd") + ".txt");
+                if (!System.IO.File.Exists(path)) return;
+                System.Text.RegularExpressions.Regex rx = new System.Text.RegularExpressions.Regex(
+                    @"^(\d\d:\d\d:\d\d)\s+PRINT type=(\S+) file=(.*?) slno=\d+ printer=(.*?) bytes=.* sent=(ok|FAILED)\s*$");
+                foreach (string l in System.IO.File.ReadAllLines(path))
+                {
+                    System.Text.RegularExpressions.Match m = rx.Match(l);
+                    if (!m.Success) continue;
+                    JobRow j = new JobRow();
+                    j.When = DateTime.Today + TimeSpan.Parse(m.Groups[1].Value);
+                    j.Form = FormName(m.Groups[2].Value, m.Groups[3].Value);
+                    j.File = m.Groups[3].Value; j.Printer = m.Groups[4].Value;
+                    j.Ok = m.Groups[5].Value == "ok";
+                    jobs.Insert(0, j);
+                }
+                while (jobs.Count > 50) jobs.RemoveAt(jobs.Count - 1);
+                if (jobs.Count > 0) lastJob = jobs[0];
+            }
+            catch { }
+        }
+
+        private void RefreshJobList()
+        {
+            lstJobs.BeginUpdate();
+            try
+            {
+                lstJobs.Items.Clear();
+                if (jobs.Count == 0)
+                {
+                    ListViewItem none = new ListViewItem("");
+                    none.SubItems.Add("");
+                    none.SubItems.Add("No print jobs on this computer yet today.");
+                    none.ForeColor = Color.FromArgb(90, 97, 91);
+                    lstJobs.Items.Add(none);
+                    return;
+                }
+                foreach (JobRow j in jobs)
+                {
+                    ListViewItem it = new ListViewItem(j.When.ToString("h:mm tt"));
+                    it.UseItemStyleForSubItems = false;
+                    it.SubItems.Add(j.Form);
+                    it.SubItems.Add(j.File);
+                    it.SubItems.Add(j.Printer);
+                    it.SubItems.Add(j.TookText);
+                    // "Sent" is what the app knows: Windows accepted the job. Whether paper came out
+                    // is not reported back to the app in 3.x, so it does not claim "Printed".
+                    bool bad = !j.Ok || j.Waiting;
+                    ListViewItem.ListViewSubItem s = it.SubItems.Add(!j.Ok ? "Failed" : j.Waiting ? "Not printed" : "Sent");
+                    s.ForeColor = bad ? Color.FromArgb(161, 35, 27) : Color.FromArgb(11, 90, 48);
+                    s.Font = new Font(lstJobs.Font, FontStyle.Bold);
+                    if (bad) it.BackColor = Color.FromArgb(253, 241, 240);
+                    lstJobs.Items.Add(it);
+                }
+            }
+            finally { lstJobs.EndUpdate(); }
+        }
+
+        private void lstJobs_Resize(object sender, EventArgs e)
+        {
+            try
+            {
+                int others = colTime.Width + colForm.Width + colPrinter.Width + colTook.Width + colResult.Width;
+                int w = lstJobs.ClientSize.Width - others - 4;
+                colFile.Width = Math.Max(120, w);
+            }
+            catch { }
+        }
+
+        private void pnlFooter_Paint(object sender, PaintEventArgs e)
+        {
+            using (Pen p = new Pen(Color.FromArgb(221, 226, 220)))
+                e.Graphics.DrawLine(p, 0, 0, pnlFooter.Width, 0);
+        }
+
+        private void NoteConnection(bool reached)
+        {
+            try
+            {
+                if (reached)
+                {
+                    lastPingOk = DateTime.Now;
+                    lastPingSeconds = (DateTime.Now - pingStarted).TotalSeconds;
+                    pingFailing = false; pingFailures = 0;
+                    lblConn.ForeColor = Color.FromArgb(11, 90, 48);
+                    lblConn.Text = "\u25CF  Connected \u00B7 " + lastPingSeconds.ToString("0.0") + " s";
+                }
+                else
+                {
+                    pingFailures++;
+                    // One slow or dropped call is normal on shop Wi-Fi; two in a row is a problem.
+                    pingFailing = pingFailures >= 2;
+                    if (pingFailing)
+                    {
+                        lblConn.ForeColor = Color.FromArgb(161, 35, 27);
+                        lblConn.Text = "\u25CF  Not connected";
+                    }
+                }
+            }
+            catch { }
+        }
+
+        /// <summary>The status card, worst problem first.</summary>
+        private void ShowCurrentStatus()
+        {
+            if (pingFailing)
+            {
+                SetStatus("Can't reach QuickFlora",
+                    (lastPingOk == DateTime.MinValue ? "Not connected since the app started." :
+                        "Last connected at " + lastPingOk.ToString("h:mm:ss tt") + ".")
+                    + " Orders will not print until this PC is back online. Retrying every 5 seconds.", true);
+                return;
+            }
+            if (lastPingOk == DateTime.MinValue)
+            {
+                SetStatus("Starting up", "Connecting to QuickFlora", false);
+                return;
+            }
+            if (printerProblem != null)
+            {
+                // AB#3189: any printer orders are actually going to, not just the one in Config.txt.
+                // 7 Oct 2026: QuickFlora sent a qfdemo order to the Lenovo's old Epson (offline) while
+                // Config.txt named the Canon; 3.5 said "Printing is working". Never again.
+                SetStatus(problemPrinter + ": " + printerProblem
+                          + (problemWaiting > 0 ? " \u2014 " + problemWaiting + (problemWaiting == 1 ? " job" : " jobs") + " not printed" : ""),
+                    "Orders sent to this printer are not printing. Turn it on and check paper and cable"
+                    + (problemPrinter != txtdefaultprinter.Text ? ", or ask QuickFlora to send this terminal's orders to " + txtdefaultprinter.Text : "")
+                    + ".", true);
+                return;
+            }
+            if (lastJob != null && !lastJob.Ok && (DateTime.Now - lastJob.When).TotalMinutes < 30)
+            {
+                SetStatus("Last print job failed",
+                    lastJob.Form + " " + lastJob.File + " could not be sent to " + lastJob.Printer
+                    + " at " + lastJob.When.ToString("h:mm tt") + ". Use Print test page to check the printer.", true);
+                return;
+            }
+            // v4 rule: the RMM agent on every print PC. Printing still works, so amber, not red —
+            // but every shop without it sees this and can tell us.
+            if (rmmState != null && rmmState != "Connected" && rmmState != "Unknown")
+            {
+                SetStatus(rmmState == "Not installed" ? "Remote support is not set up on this PC"
+                                                      : "Remote support is not connected",
+                    "Printing is working. Call QuickFlora support (support@quickflora.com) so we can fix problems on this PC remotely.", 1);
+                return;
+            }
+            string sub = lastJob == null
+                ? "Connected. Waiting for the next order."
+                : "Last job: " + lastJob.Form.ToLower() + " sent to " + lastJob.Printer
+                  + (lastJob.Seconds >= 0 ? " in " + lastJob.Seconds.ToString("0.0") + " s" : "")
+                  + " (" + lastJob.When.ToString("h:mm tt") + ")";
+            SetStatus("Printing is working", sub, false);
+        }
+
+        private void btnSettings_Click(object sender, EventArgs e)
+        {
+            using (SettingsView v = new SettingsView(txtcmp.Text, txtDivision.Text, txtdepartment.Text,
+                       txtTerminal.Text, txtdefaultprinter.Text, txtadobe.Text, configPath,
+                       new EventHandler(btnOpenReceipts_Click)))
+            {
+                v.ShowDialog(this);
+            }
+            loadingSettings = true;
+            autoStartToolStripMenuItem.Checked = Program.IsAutoStartEnabled();
+            loadingSettings = false;
+        }
+
+        private void timerHealth_Tick(object sender, EventArgs e)
+        {
+            RefreshHealthAsync();
+        }
+
+        private class HealthInfo
+        {
+            public List<string[]> Printers = new List<string[]>();   // name, state, severity 0/1/2
+            public string ProblemPrinter;
+            public string ProblemState;
+            public int ProblemWaiting;
+            public Dictionary<string, int> Waiting = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            public string Ip = "";
+            public string Rmm = "";
+        }
+
+        /// <summary>WMI and DNS can take a second or two on a busy PC, so they run off the UI thread.</summary>
+        private void RefreshHealthAsync()
+        {
+            lblPcName.Text = Environment.MachineName;
+            lblUser.Text = Environment.UserName;
+            lblVersion.Text = Program.AppVersion;
+
+            List<string> names = new List<string>();
+            if (txtdefaultprinter.Text.Trim().Length > 0) names.Add(txtdefaultprinter.Text.Trim());
+            foreach (JobRow j in jobs)
+                if (!string.IsNullOrEmpty(j.Printer) && !names.Contains(j.Printer) && names.Count < 4) names.Add(j.Printer);
+            string configured = txtdefaultprinter.Text.Trim();
+            // Printers that matter right now: the configured one, plus any that got a job in the last 30 min.
+            List<string> live = new List<string>();
+            if (configured.Length > 0) live.Add(configured);
+            foreach (JobRow j in jobs)
+                if (!string.IsNullOrEmpty(j.Printer) && (DateTime.Now - j.When).TotalMinutes <= 30 && !live.Contains(j.Printer)) live.Add(j.Printer);
+
+            System.Threading.ThreadPool.QueueUserWorkItem(delegate
+            {
+                HealthInfo h = ReadHealth(names, live);
+                try { BeginInvoke(new MethodInvoker(delegate { ShowHealth(h); })); }
+                catch { }
+            });
+        }
+
+        private static HealthInfo ReadHealth(List<string> names, List<string> live)
+        {
+            HealthInfo h = new HealthInfo();
+            try
+            {
+                foreach (System.Net.IPAddress a in System.Net.Dns.GetHostAddresses(System.Net.Dns.GetHostName()))
+                {
+                    if (a.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork && !System.Net.IPAddress.IsLoopback(a))
+                    { h.Ip = a.ToString(); break; }
+                }
+            }
+            catch { }
+
+            Dictionary<string, ManagementObject> found = new Dictionary<string, ManagementObject>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                using (ManagementObjectSearcher s = new ManagementObjectSearcher(
+                    "SELECT Name, PortName, WorkOffline, PrinterStatus, DetectedErrorState FROM Win32_Printer"))
+                {
+                    foreach (ManagementObject o in s.Get()) found[Convert.ToString(o["Name"])] = o;
+                }
+            }
+            catch { }
+
+            // AB#3189: also any printer Windows is holding QuickFlora jobs for, even if this app has
+            // no record of them (restarted, log cleared). Windows' queue is the truth, not our memory.
+            foreach (string stuck in PrintersWithStuckQuickFloraJobs())
+            {
+                if (!names.Contains(stuck)) names.Add(stuck);
+                if (!live.Contains(stuck)) live.Add(stuck);
+            }
+
+            foreach (string n in names)
+            {
+                string state; int sev;
+                ManagementObject o;
+                if (!found.TryGetValue(n, out o)) { state = "Not installed"; sev = 2; }
+                else
+                {
+                    PrinterState(o, out state, out sev);
+                    // Windows often says "Ready" for a network printer that is actually stopped
+                    // (Canon G6010 on the Lenovo, 7 Oct 2026: Windows Ready, printer in error).
+                    // Two checks Windows does not do for us:
+                    if (sev < 2) LastJobState(n, ref state, ref sev);
+                    if (sev < 2) NetworkState(Convert.ToString(o["PortName"]), ref state, ref sev);
+                }
+                int waiting = WaitingJobs(n);
+                h.Waiting[n] = waiting;
+                if (waiting > 0) state += " \u00B7 " + waiting + " waiting";
+                h.Printers.Add(new string[] { n, state, sev.ToString() });
+                // Worst live printer wins: a fault with jobs stuck beats a fault with none.
+                if (sev == 2 && live.Contains(n) && (h.ProblemPrinter == null || waiting > h.ProblemWaiting))
+                {
+                    h.ProblemPrinter = n; h.ProblemState = state; h.ProblemWaiting = waiting;
+                }
+            }
+
+            h.Rmm = RmmState();
+            return h;
+        }
+
+        /// <summary>Printers holding a QuickFlora job (receipt, worksheet, card...) unprinted for over 30 s.</summary>
+        private static List<string> PrintersWithStuckQuickFloraJobs()
+        {
+            List<string> result = new List<string>();
+            try
+            {
+                using (ManagementObjectSearcher s = new ManagementObjectSearcher(
+                    "SELECT Name, Document, StatusMask, TimeSubmitted FROM Win32_PrintJob"))
+                {
+                    foreach (ManagementObject j in s.Get())
+                    {
+                        int mask = Convert.ToInt32(j["StatusMask"]);
+                        if ((mask & (128 | 256 | 4096)) != 0) continue;
+                        DateTime t = ManagementDateTimeConverter.ToDateTime(Convert.ToString(j["TimeSubmitted"]));
+                        if ((DateTime.Now - t).TotalSeconds <= 30 || (DateTime.Now - t).TotalHours > 24) continue;
+                        string doc = Convert.ToString(j["Document"]);
+                        // Raw receipts are named QuickFlora-Print (clsPrinting); PDFs keep the server's
+                        // file name, which always contains the company ID.
+                        bool ours = doc.StartsWith("QuickFlora", StringComparison.OrdinalIgnoreCase)
+                            || (Program.CompanyID.Length > 0 && doc.IndexOf(Program.CompanyID, StringComparison.OrdinalIgnoreCase) >= 0);
+                        if (!ours) continue;
+                        string name = Convert.ToString(j["Name"]);
+                        int comma = name.LastIndexOf(',');
+                        if (comma > 0 && !result.Contains(name.Substring(0, comma))) result.Add(name.Substring(0, comma));
+                    }
+                }
+            }
+            catch { }
+            return result;
+        }
+
+        /// <summary>Jobs Windows is still holding for this printer (not printed, not complete) for over 30 s.</summary>
+        private static int WaitingJobs(string printer)
+        {
+            int n = 0;
+            try
+            {
+                using (ManagementObjectSearcher s = new ManagementObjectSearcher(
+                    "SELECT Name, StatusMask, TimeSubmitted FROM Win32_PrintJob"))
+                {
+                    foreach (ManagementObject j in s.Get())
+                    {
+                        string name = Convert.ToString(j["Name"]);
+                        int comma = name.LastIndexOf(',');
+                        if (comma <= 0 || !name.Substring(0, comma).Equals(printer, StringComparison.OrdinalIgnoreCase)) continue;
+                        int mask = Convert.ToInt32(j["StatusMask"]);
+                        // 128 printed, 256 deleted, 4096 complete
+                        if ((mask & (128 | 256 | 4096)) != 0) continue;
+                        DateTime t = ManagementDateTimeConverter.ToDateTime(Convert.ToString(j["TimeSubmitted"]));
+                        if ((DateTime.Now - t).TotalSeconds > 30) n++;
+                    }
+                }
+            }
+            catch { }
+            return n;
+        }
+
+        /// <summary>
+        /// The newest job Windows still holds for this printer. If it ended in error, offline or out
+        /// of paper in the last hour, the printer has a problem whatever its status says. A later
+        /// good job clears it, because only the newest job counts.
+        /// </summary>
+        private static void LastJobState(string printer, ref string state, ref int severity)
+        {
+            try
+            {
+                DateTime newest = DateTime.MinValue; int mask = 0;
+                using (ManagementObjectSearcher s = new ManagementObjectSearcher(
+                    "SELECT Name, StatusMask, TimeSubmitted FROM Win32_PrintJob"))
+                {
+                    foreach (ManagementObject j in s.Get())
+                    {
+                        string name = Convert.ToString(j["Name"]);   // "Printer Name, 12"
+                        int comma = name.LastIndexOf(',');
+                        if (comma <= 0 || !name.Substring(0, comma).Equals(printer, StringComparison.OrdinalIgnoreCase)) continue;
+                        DateTime t = ManagementDateTimeConverter.ToDateTime(Convert.ToString(j["TimeSubmitted"]));
+                        if (t > newest) { newest = t; mask = Convert.ToInt32(j["StatusMask"]); }
+                    }
+                }
+                if (newest == DateTime.MinValue || (DateTime.Now - newest).TotalMinutes > 60) return;
+                // JOB_STATUS_* flags: 2 error, 32 offline, 64 paper out, 512 blocked, 1024 user intervention
+                if ((mask & 64) != 0) { state = "Out of paper"; severity = 2; }
+                else if ((mask & 32) != 0) { state = "Offline"; severity = 2; }
+                else if ((mask & (2 | 512 | 1024)) != 0) { state = "Error on last job"; severity = 2; }
+            }
+            catch { }
+        }
+
+        /// <summary>For a printer on a TCP/IP port: does anything answer on a printing port? Same
+        /// ports and spirit as agent\PrinterWatch.ps1. USB and other ports are skipped.</summary>
+        private static void NetworkState(string portName, ref string state, ref int severity)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(portName)) return;
+                string host = null;
+                System.Net.IPAddress ip;
+                if (System.Net.IPAddress.TryParse(portName, out ip)) host = portName;
+                else
+                {
+                    using (ManagementObjectSearcher s = new ManagementObjectSearcher(
+                        "SELECT HostAddress FROM Win32_TCPIPPrinterPort WHERE Name='" + portName.Replace("\\", "\\\\").Replace("'", "\\'") + "'"))
+                    {
+                        foreach (ManagementObject p in s.Get()) host = Convert.ToString(p["HostAddress"]);
+                    }
+                }
+                if (string.IsNullOrEmpty(host)) return;
+                foreach (int port in new int[] { 9100, 631, 515 })
+                {
+                    using (System.Net.Sockets.TcpClient c = new System.Net.Sockets.TcpClient())
+                    {
+                        IAsyncResult ar = c.BeginConnect(host, port, null, null);
+                        if (ar.AsyncWaitHandle.WaitOne(800) && c.Connected) return;
+                    }
+                }
+                state = "Not reachable on the network"; severity = 2;
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Tactical RMM agent: installed? running? and actually connected to our RMM server (it
+        /// keeps an open connection while connected)? "Running" alone does not mean we can reach
+        /// the PC — a shop firewall can block it.
+        /// </summary>
+        private static string RmmState()
+        {
+            try
+            {
+                int pid = 0; string svcState = null;
+                using (ManagementObjectSearcher s = new ManagementObjectSearcher(
+                    "SELECT State, ProcessId FROM Win32_Service WHERE Name='tacticalrmm'"))
+                {
+                    foreach (ManagementObject o in s.Get())
+                    {
+                        svcState = Convert.ToString(o["State"]);
+                        pid = Convert.ToInt32(o["ProcessId"]);
+                    }
+                }
+                if (svcState == null) return "Not installed";
+                if (svcState != "Running" || pid <= 0) return "Installed, not running";
+
+                ProcessStartInfo psi = new ProcessStartInfo("netstat.exe", "-ano -p TCP");
+                psi.UseShellExecute = false; psi.RedirectStandardOutput = true; psi.CreateNoWindow = true;
+                using (Process p = Process.Start(psi))
+                {
+                    string output = p.StandardOutput.ReadToEnd();
+                    p.WaitForExit(5000);
+                    string pidText = pid.ToString();
+                    foreach (string line in output.Split('\n'))
+                    {
+                        string[] f = line.Trim().Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                        // Proto  Local  Foreign  State  PID
+                        if (f.Length >= 5 && f[3] == "ESTABLISHED" && f[4] == pidText &&
+                            !f[2].StartsWith("127.") && !f[2].StartsWith("[::1]"))
+                            return "Connected";
+                    }
+                }
+                return "Running, not connected";
+            }
+            catch { return "Unknown"; }
+        }
+
+        /// <summary>Same wording as agent\PrinterWatch.ps1 so the shop and support see the same words.</summary>
+        private static void PrinterState(ManagementObject o, out string state, out int severity)
+        {
+            state = "Ready"; severity = 0;
+            try
+            {
+                if (o["WorkOffline"] != null && (bool)o["WorkOffline"]) { state = "Offline"; severity = 2; return; }
+                int err = o["DetectedErrorState"] == null ? 0 : Convert.ToInt32(o["DetectedErrorState"]);
+                switch (err)
+                {
+                    case 3: state = "Low paper"; severity = 1; return;
+                    case 4: state = "Out of paper"; severity = 2; return;
+                    case 5: state = "Low toner"; severity = 1; return;
+                    case 6: state = "Out of toner"; severity = 2; return;
+                    case 7: case 16: state = "Door open"; severity = 2; return;
+                    case 8: state = "Jammed"; severity = 2; return;
+                    case 9: state = "Offline"; severity = 2; return;
+                    case 10: state = "Service needed"; severity = 2; return;
+                    case 12: state = "Paper problem"; severity = 2; return;
+                }
+                int st = o["PrinterStatus"] == null ? 3 : Convert.ToInt32(o["PrinterStatus"]);
+                if (st == 7) { state = "Offline"; severity = 2; }
+                else if (st == 6) { state = "Stopped"; severity = 2; }
+                else if (st == 4) { state = "Printing"; }
+            }
+            catch { }
+        }
+
+        private void ShowHealth(HealthInfo h)
+        {
+            try
+            {
+                lblIp.Text = h.Ip;
+                lblRmm.Text = h.Rmm;
+                lblRmm.ForeColor = h.Rmm == "Connected" ? Color.FromArgb(11, 90, 48) : Color.FromArgb(161, 35, 27);
+                rmmState = h.Rmm;
+
+                lstPrinters.BeginUpdate();
+                lstPrinters.Items.Clear();
+                foreach (string[] p in h.Printers)
+                {
+                    ListViewItem it = new ListViewItem("\u25CF  " + p[0]);
+                    it.UseItemStyleForSubItems = false;
+                    int sev = int.Parse(p[2]);
+                    Color c = sev == 0 ? Color.FromArgb(11, 90, 48) : sev == 1 ? Color.FromArgb(122, 66, 6) : Color.FromArgb(161, 35, 27);
+                    ListViewItem.ListViewSubItem s = it.SubItems.Add(p[1]);
+                    s.ForeColor = c;
+                    s.Font = new Font(lstPrinters.Font, FontStyle.Bold);
+                    lstPrinters.Items.Add(it);
+                }
+                if (h.Printers.Count == 0) lstPrinters.Items.Add("No printer set in Config.txt");
+                lstPrinters.EndUpdate();
+
+                printerProblem = h.ProblemPrinter == null ? null : h.ProblemState;
+                problemPrinter = h.ProblemPrinter;
+                problemWaiting = h.ProblemWaiting;
+                bool changed = false;
+                foreach (JobRow j in jobs)
+                {
+                    int w; h.Waiting.TryGetValue(j.Printer ?? "", out w);
+                    bool waitingNow = j.Ok && w > 0 && h.ProblemPrinter != null
+                        && j.Printer.Equals(h.ProblemPrinter, StringComparison.OrdinalIgnoreCase)
+                        && (DateTime.Now - j.When).TotalMinutes <= 60;
+                    if (waitingNow != j.Waiting) { j.Waiting = waitingNow; changed = true; }
+                }
+                if (changed) RefreshJobList();
+                ShowCurrentStatus();
+            }
+            catch { }
         }
 
 }

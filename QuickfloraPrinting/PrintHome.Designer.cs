@@ -15,495 +15,560 @@ namespace QuickfloraPrinting
 
         #region Windows Form Designer generated code
 
-        // AB#1327 — interface rebuilt against QuickFlora Brand-Identity Guidelines Edition 2.
-        //   PMS 348 C  #036A37  primary: header, primary action, headings
-        //   PMS 2269 C #80C56C  surface green: accents and OK states. Never body text.
-        //   PMS 486 C  #CC7C68  warnings and attention states
-        //   PMS 424 C  #656868  secondary text and captions
-        //   Cool Grey 1 #E2DDDB panel washes and dividers
+        // AB#3189 (v3.5) — main window rebuilt to the approved 3.5 design. UI only: the print loop,
+        // web service calls and Config.txt handling are unchanged from 3.4.
         //
-        // Fonts: the guide specifies Montserrat (headings/labels) and Open Sans (body).
-        // Neither ships with Windows, and a desktop app cannot fetch webfonts, so this build
-        // falls back to Segoe UI. Bundling the real fonts is tracked separately — see AB#1327.
+        // Why the rebuild: 3.4 was laid out with AutoScaleMode.Font at AutoScaleDimensions 9x20, i.e.
+        // on a 150% display. On a 125% laptop Windows shrank the window to ~83% while some text did
+        // not shrink, so the clock and "Copy Details for Support" were cut off and the status lines
+        // overlapped (Lenovo test PC, 7 Oct 2026). This layout is authored at 96 DPI with
+        // AutoScaleMode.Dpi, the exe declares itself DPI-aware (app.manifest), and every region is
+        // docked rather than placed at fixed pixels, so it reflows at any size or scale.
+        //
+        // Colours: PMS 348 C #036A37 primary; status greens/reds kept dark enough for 4.5:1 text.
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(PrintHome));
-            this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.notifyIcon1 = new System.Windows.Forms.NotifyIcon(this.components);
             this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.autoStartToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.pnlStatus = new System.Windows.Forms.Panel();
+            this.timer1 = new System.Windows.Forms.Timer(this.components);
+            this.timerHealth = new System.Windows.Forms.Timer(this.components);
+
+            this.pnlHeader = new System.Windows.Forms.Panel();
+            this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            this.pnlHeaderRight = new System.Windows.Forms.TableLayoutPanel();
+            this.lblShop = new System.Windows.Forms.Label();
+            this.lblTerminalName = new System.Windows.Forms.Label();
+            this.lblConn = new System.Windows.Forms.Label();
+
+            this.pnlFooter = new System.Windows.Forms.Panel();
+            this.lblHelp = new System.Windows.Forms.Label();
+            this.flowFooter = new System.Windows.Forms.FlowLayoutPanel();
+            this.btnSettings = new System.Windows.Forms.Button();
+            this.btnCopyDiag = new System.Windows.Forms.Button();
+            this.btnTestDrawer = new System.Windows.Forms.Button();
+
+            this.pnlBody = new System.Windows.Forms.Panel();
+            this.pnlStatus = new QuickfloraPrinting.CardPanel();
+            this.badgeStatus = new QuickfloraPrinting.StatusBadge();
+            this.pnlStatusText = new System.Windows.Forms.Panel();
             this.lblStatus = new System.Windows.Forms.Label();
             this.lblStatusSub = new System.Windows.Forms.Label();
-            this.lbltimer = new System.Windows.Forms.Label();
-            this.btnTestDrawer = new System.Windows.Forms.Button();
             this.btnTestPrint = new System.Windows.Forms.Button();
-            this.btnOpenReceipts = new System.Windows.Forms.Button();
-            this.btnCopyDiag = new System.Windows.Forms.Button();
-            this.label1 = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
-            this.label4 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
-            this.label5 = new System.Windows.Forms.Label();
-            this.label6 = new System.Windows.Forms.Label();
+            this.pnlGap = new System.Windows.Forms.Panel();
+            this.tblMain = new System.Windows.Forms.TableLayoutPanel();
+            this.cardJobs = new QuickfloraPrinting.CardPanel();
+            this.lblJobsTitle = new System.Windows.Forms.Label();
+            this.lstJobs = new System.Windows.Forms.ListView();
+            this.colTime = new System.Windows.Forms.ColumnHeader();
+            this.colFile = new System.Windows.Forms.ColumnHeader();
+            this.colForm = new System.Windows.Forms.ColumnHeader();
+            this.colPrinter = new System.Windows.Forms.ColumnHeader();
+            this.colTook = new System.Windows.Forms.ColumnHeader();
+            this.colResult = new System.Windows.Forms.ColumnHeader();
+            this.imgRowHeight = new System.Windows.Forms.ImageList(this.components);
+            this.pnlRight = new System.Windows.Forms.TableLayoutPanel();
+            this.cardPrinters = new QuickfloraPrinting.CardPanel();
+            this.lblPrintersTitle = new System.Windows.Forms.Label();
+            this.lstPrinters = new System.Windows.Forms.ListView();
+            this.colPrinterName = new System.Windows.Forms.ColumnHeader();
+            this.colPrinterState = new System.Windows.Forms.ColumnHeader();
+            this.cardComputer = new QuickfloraPrinting.CardPanel();
+            this.lblComputerTitle = new System.Windows.Forms.Label();
+            this.tblComputer = new System.Windows.Forms.TableLayoutPanel();
+            this.lblPcNameCap = new System.Windows.Forms.Label();
+            this.lblPcName = new System.Windows.Forms.Label();
+            this.lblIpCap = new System.Windows.Forms.Label();
+            this.lblIp = new System.Windows.Forms.Label();
+            this.lblUserCap = new System.Windows.Forms.Label();
+            this.lblUser = new System.Windows.Forms.Label();
+            this.lblVersionCap = new System.Windows.Forms.Label();
+            this.lblVersion = new System.Windows.Forms.Label();
+            this.lblRmmCap = new System.Windows.Forms.Label();
+            this.lblRmm = new System.Windows.Forms.Label();
+
+            // Not shown on screen. The print loop and the support copy still read and write these
+            // exactly as in 3.4 (Config.txt values, last activity text), so they stay as fields.
+            this.txtcmp = new System.Windows.Forms.TextBox();
             this.txtDivision = new System.Windows.Forms.TextBox();
             this.txtdepartment = new System.Windows.Forms.TextBox();
             this.txtTerminal = new System.Windows.Forms.TextBox();
-            this.txtcmp = new System.Windows.Forms.TextBox();
             this.txtadobe = new System.Windows.Forms.TextBox();
-            this.label8 = new System.Windows.Forms.Label();
-            this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.txtdefaultprinter = new System.Windows.Forms.TextBox();
-            this.label7 = new System.Windows.Forms.Label();
-            this.timer1 = new System.Windows.Forms.Timer(this.components);
-            this.groupBox2 = new System.Windows.Forms.GroupBox();
-            this.lblprintfile = new System.Windows.Forms.Label();
+            this.lbltimer = new System.Windows.Forms.Label();
             this.lblprintrequest = new System.Windows.Forms.Label();
-            this.lblVersion = new System.Windows.Forms.Label();
+            this.lblprintfile = new System.Windows.Forms.Label();
+            this.btnOpenReceipts = new System.Windows.Forms.Button();
+
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.contextMenuStrip1.SuspendLayout();
+            this.pnlHeader.SuspendLayout();
+            this.pnlHeaderRight.SuspendLayout();
+            this.pnlFooter.SuspendLayout();
+            this.flowFooter.SuspendLayout();
+            this.pnlBody.SuspendLayout();
             this.pnlStatus.SuspendLayout();
-            this.groupBox1.SuspendLayout();
-            this.groupBox2.SuspendLayout();
+            this.pnlStatusText.SuspendLayout();
+            this.tblMain.SuspendLayout();
+            this.cardJobs.SuspendLayout();
+            this.pnlRight.SuspendLayout();
+            this.cardPrinters.SuspendLayout();
+            this.cardComputer.SuspendLayout();
+            this.tblComputer.SuspendLayout();
             this.SuspendLayout();
+
+            System.Drawing.Color green = System.Drawing.Color.FromArgb(3, 106, 55);
+            System.Drawing.Color ink = System.Drawing.Color.FromArgb(28, 33, 29);
+            System.Drawing.Color grey = System.Drawing.Color.FromArgb(90, 97, 91);
+            System.Drawing.Color ground = System.Drawing.Color.FromArgb(243, 245, 242);
+            System.Drawing.Color line = System.Drawing.Color.FromArgb(201, 207, 200);
+            System.Drawing.Font fBody = new System.Drawing.Font("Segoe UI", 10F);
+            System.Drawing.Font fBold = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            System.Drawing.Font fTitle = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
+
             //
-            // pictureBox1 — brand header, approved reversed lockup on PMS 348
-            //
-            this.pictureBox1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(3)))), ((int)(((byte)(106)))), ((int)(((byte)(55)))));
-            this.pictureBox1.Dock = System.Windows.Forms.DockStyle.Top;
-            this.pictureBox1.Image = global::QuickfloraPrinting.Properties.Resources.QFHEADER;
-            this.pictureBox1.Location = new System.Drawing.Point(0, 0);
-            this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(999, 100);
-            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.pictureBox1.TabIndex = 0;
-            this.pictureBox1.TabStop = false;
-            //
-            // notifyIcon1
+            // notifyIcon1 / tray menu (unchanged behaviour)
             //
             this.notifyIcon1.ContextMenuStrip = this.contextMenuStrip1;
             this.notifyIcon1.Icon = ((System.Drawing.Icon)(resources.GetObject("notifyIcon1.Icon")));
-            this.notifyIcon1.Text = "QuickFlora Print App";
+            this.notifyIcon1.Text = Program.WindowTitle;
             this.notifyIcon1.Visible = true;
             this.notifyIcon1.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.notifyIcon1_MouseDoubleClick);
-            //
-            // contextMenuStrip1
-            //
             this.contextMenuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.autoStartToolStripMenuItem,
-            this.exitToolStripMenuItem});
+                this.autoStartToolStripMenuItem,
+                this.exitToolStripMenuItem});
             this.contextMenuStrip1.Name = "contextMenuStrip1";
-            this.contextMenuStrip1.Size = new System.Drawing.Size(213, 64);
-            //
-            // autoStartToolStripMenuItem  (AB#1321)
-            //
             this.autoStartToolStripMenuItem.CheckOnClick = true;
             this.autoStartToolStripMenuItem.Name = "autoStartToolStripMenuItem";
-            this.autoStartToolStripMenuItem.Size = new System.Drawing.Size(212, 30);
             this.autoStartToolStripMenuItem.Text = "Start with Windows";
             this.autoStartToolStripMenuItem.CheckedChanged += new System.EventHandler(this.autoStartToolStripMenuItem_CheckedChanged);
-            //
-            // exitToolStripMenuItem
-            //
             this.exitToolStripMenuItem.Image = global::QuickfloraPrinting.Properties.Resources.delete;
             this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-            this.exitToolStripMenuItem.Size = new System.Drawing.Size(212, 30);
             this.exitToolStripMenuItem.Text = "Exit";
             this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitToolStripMenuItem_Click);
             //
-            // pnlStatus — status at a glance
-            //
-            this.pnlStatus.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(244)))), ((int)(((byte)(246)))), ((int)(((byte)(242)))));
-            this.pnlStatus.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.pnlStatus.Controls.Add(this.lbltimer);
-            this.pnlStatus.Controls.Add(this.lblStatus);
-            this.pnlStatus.Controls.Add(this.lblStatusSub);
-            this.pnlStatus.Location = new System.Drawing.Point(12, 112);
-            this.pnlStatus.Name = "pnlStatus";
-            this.pnlStatus.Size = new System.Drawing.Size(975, 62);
-            this.pnlStatus.TabIndex = 30;
-            //
-            // lblStatus
-            //
-            this.lblStatus.AutoSize = true;
-            this.lblStatus.Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold);
-            this.lblStatus.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(3)))), ((int)(((byte)(106)))), ((int)(((byte)(55)))));
-            this.lblStatus.Location = new System.Drawing.Point(14, 8);
-            this.lblStatus.Name = "lblStatus";
-            this.lblStatus.Size = new System.Drawing.Size(200, 25);
-            this.lblStatus.TabIndex = 0;
-            this.lblStatus.Text = "Starting up...";
-            //
-            // lblStatusSub
-            //
-            this.lblStatusSub.AutoSize = true;
-            this.lblStatusSub.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.lblStatusSub.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(101)))), ((int)(((byte)(104)))), ((int)(((byte)(104)))));
-            this.lblStatusSub.Location = new System.Drawing.Point(16, 36);
-            this.lblStatusSub.Name = "lblStatusSub";
-            this.lblStatusSub.Size = new System.Drawing.Size(120, 19);
-            this.lblStatusSub.TabIndex = 1;
-            this.lblStatusSub.Text = "Waiting for print jobs";
-            //
-            // lbltimer
-            //
-            this.lbltimer.AutoSize = true;
-            this.lbltimer.Font = new System.Drawing.Font("Segoe UI", 15F, System.Drawing.FontStyle.Regular);
-            this.lbltimer.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(101)))), ((int)(((byte)(104)))), ((int)(((byte)(104)))));
-            this.lbltimer.Location = new System.Drawing.Point(795, 16);
-            this.lbltimer.Name = "lbltimer";
-            this.lbltimer.Size = new System.Drawing.Size(0, 28);
-            this.lbltimer.TabIndex = 2;
-            //
-            // btnTestDrawer — the one that settles hardware vs software in seconds
-            //
-            this.btnTestDrawer.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(3)))), ((int)(((byte)(106)))), ((int)(((byte)(55)))));
-            this.btnTestDrawer.FlatAppearance.BorderSize = 0;
-            this.btnTestDrawer.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnTestDrawer.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            this.btnTestDrawer.ForeColor = System.Drawing.Color.White;
-            this.btnTestDrawer.Location = new System.Drawing.Point(12, 186);
-            this.btnTestDrawer.Name = "btnTestDrawer";
-            this.btnTestDrawer.Size = new System.Drawing.Size(236, 54);
-            this.btnTestDrawer.TabIndex = 31;
-            this.btnTestDrawer.Text = "Test Cash Drawer";
-            this.btnTestDrawer.UseVisualStyleBackColor = false;
-            this.btnTestDrawer.Click += new System.EventHandler(this.btnTestDrawer_Click);
-            //
-            // btnTestPrint
-            //
-            this.btnTestPrint.BackColor = System.Drawing.Color.White;
-            this.btnTestPrint.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(226)))), ((int)(((byte)(221)))), ((int)(((byte)(219)))));
-            this.btnTestPrint.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnTestPrint.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.btnTestPrint.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(28)))), ((int)(((byte)(33)))), ((int)(((byte)(29)))));
-            this.btnTestPrint.Location = new System.Drawing.Point(256, 186);
-            this.btnTestPrint.Name = "btnTestPrint";
-            this.btnTestPrint.Size = new System.Drawing.Size(236, 54);
-            this.btnTestPrint.TabIndex = 32;
-            this.btnTestPrint.Text = "Test Print";
-            this.btnTestPrint.UseVisualStyleBackColor = false;
-            this.btnTestPrint.Click += new System.EventHandler(this.btnTestPrint_Click);
-            //
-            // btnOpenReceipts
-            //
-            this.btnOpenReceipts.BackColor = System.Drawing.Color.White;
-            this.btnOpenReceipts.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(226)))), ((int)(((byte)(221)))), ((int)(((byte)(219)))));
-            this.btnOpenReceipts.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnOpenReceipts.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.btnOpenReceipts.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(28)))), ((int)(((byte)(33)))), ((int)(((byte)(29)))));
-            this.btnOpenReceipts.Location = new System.Drawing.Point(500, 186);
-            this.btnOpenReceipts.Name = "btnOpenReceipts";
-            this.btnOpenReceipts.Size = new System.Drawing.Size(236, 54);
-            this.btnOpenReceipts.TabIndex = 33;
-            this.btnOpenReceipts.Text = "Open Receipts Folder";
-            this.btnOpenReceipts.UseVisualStyleBackColor = false;
-            this.btnOpenReceipts.Click += new System.EventHandler(this.btnOpenReceipts_Click);
-            //
-            // btnCopyDiag
-            //
-            this.btnCopyDiag.BackColor = System.Drawing.Color.White;
-            this.btnCopyDiag.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(226)))), ((int)(((byte)(221)))), ((int)(((byte)(219)))));
-            this.btnCopyDiag.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnCopyDiag.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.btnCopyDiag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(28)))), ((int)(((byte)(33)))), ((int)(((byte)(29)))));
-            this.btnCopyDiag.Location = new System.Drawing.Point(744, 186);
-            this.btnCopyDiag.Name = "btnCopyDiag";
-            this.btnCopyDiag.Size = new System.Drawing.Size(243, 54);
-            this.btnCopyDiag.TabIndex = 34;
-            this.btnCopyDiag.Text = "Copy Details for Support";
-            this.btnCopyDiag.UseVisualStyleBackColor = false;
-            this.btnCopyDiag.Click += new System.EventHandler(this.btnCopyDiag_Click);
-            //
-            // label1
-            //
-            this.label1.AutoSize = true;
-            this.label1.Font = new System.Drawing.Font("Segoe UI", 8.5F);
-            this.label1.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(101)))), ((int)(((byte)(104)))), ((int)(((byte)(104)))));
-            this.label1.Location = new System.Drawing.Point(12, 604);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(300, 17);
-            this.label1.TabIndex = 2;
-            this.label1.Text = "QuickFlora POS Windows Print App";
-            //
-            // label2
-            //
-            this.label2.AutoSize = true;
-            this.label2.Font = new System.Drawing.Font("Segoe UI", 8.5F);
-            this.label2.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(101)))), ((int)(((byte)(104)))), ((int)(((byte)(104)))));
-            this.label2.Location = new System.Drawing.Point(12, 624);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(600, 17);
-            this.label2.TabIndex = 3;
-            this.label2.Text = "Check printer settings before use. Email support@quickflora.com for assistance.";
-            //
-            // label6  (CompanyID)
-            //
-            this.label6.AutoSize = true;
-            this.label6.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.label6.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(101)))), ((int)(((byte)(104)))), ((int)(((byte)(104)))));
-            this.label6.Location = new System.Drawing.Point(14, 32);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(90, 20);
-            this.label6.TabIndex = 14;
-            this.label6.Text = "Company";
-            //
-            // label4  (Division)
-            //
-            this.label4.AutoSize = true;
-            this.label4.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.label4.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(101)))), ((int)(((byte)(104)))), ((int)(((byte)(104)))));
-            this.label4.Location = new System.Drawing.Point(14, 66);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(90, 20);
-            this.label4.TabIndex = 17;
-            this.label4.Text = "Division";
-            //
-            // label3  (Department)
-            //
-            this.label3.AutoSize = true;
-            this.label3.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.label3.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(101)))), ((int)(((byte)(104)))), ((int)(((byte)(104)))));
-            this.label3.Location = new System.Drawing.Point(14, 100);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(90, 20);
-            this.label3.TabIndex = 16;
-            this.label3.Text = "Department";
-            //
-            // label5  (Terminal)
-            //
-            this.label5.AutoSize = true;
-            this.label5.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.label5.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(101)))), ((int)(((byte)(104)))), ((int)(((byte)(104)))));
-            this.label5.Location = new System.Drawing.Point(14, 134);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(90, 20);
-            this.label5.TabIndex = 15;
-            this.label5.Text = "Terminal";
-            //
-            // label7  (Receipt printer)
-            //
-            this.label7.AutoSize = true;
-            this.label7.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.label7.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(101)))), ((int)(((byte)(104)))), ((int)(((byte)(104)))));
-            this.label7.Location = new System.Drawing.Point(14, 168);
-            this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(90, 20);
-            this.label7.TabIndex = 20;
-            this.label7.Text = "Printer";
-            //
-            // txtcmp
-            //
-            this.txtcmp.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.txtcmp.Location = new System.Drawing.Point(120, 28);
-            this.txtcmp.Name = "txtcmp";
-            this.txtcmp.ReadOnly = true;
-            this.txtcmp.Size = new System.Drawing.Size(240, 27);
-            this.txtcmp.TabIndex = 10;
-            //
-            // txtDivision
-            //
-            this.txtDivision.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.txtDivision.Location = new System.Drawing.Point(120, 62);
-            this.txtDivision.Name = "txtDivision";
-            this.txtDivision.ReadOnly = true;
-            this.txtDivision.Size = new System.Drawing.Size(240, 27);
-            this.txtDivision.TabIndex = 11;
-            //
-            // txtdepartment
-            //
-            this.txtdepartment.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.txtdepartment.Location = new System.Drawing.Point(120, 96);
-            this.txtdepartment.Name = "txtdepartment";
-            this.txtdepartment.ReadOnly = true;
-            this.txtdepartment.Size = new System.Drawing.Size(240, 27);
-            this.txtdepartment.TabIndex = 12;
-            //
-            // txtTerminal
-            //
-            this.txtTerminal.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.txtTerminal.Location = new System.Drawing.Point(120, 130);
-            this.txtTerminal.Name = "txtTerminal";
-            this.txtTerminal.ReadOnly = true;
-            this.txtTerminal.Size = new System.Drawing.Size(240, 27);
-            this.txtTerminal.TabIndex = 13;
-            //
-            // txtdefaultprinter
-            //
-            this.txtdefaultprinter.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.txtdefaultprinter.Location = new System.Drawing.Point(120, 164);
-            this.txtdefaultprinter.Name = "txtdefaultprinter";
-            this.txtdefaultprinter.ReadOnly = true;
-            this.txtdefaultprinter.Size = new System.Drawing.Size(240, 27);
-            this.txtdefaultprinter.TabIndex = 19;
-            //
-            // groupBox1
-            //
-            this.groupBox1.Controls.Add(this.txtdefaultprinter);
-            this.groupBox1.Controls.Add(this.label7);
-            this.groupBox1.Controls.Add(this.label6);
-            this.groupBox1.Controls.Add(this.txtcmp);
-            this.groupBox1.Controls.Add(this.txtTerminal);
-            this.groupBox1.Controls.Add(this.label4);
-            this.groupBox1.Controls.Add(this.txtdepartment);
-            this.groupBox1.Controls.Add(this.label3);
-            this.groupBox1.Controls.Add(this.txtDivision);
-            this.groupBox1.Controls.Add(this.label5);
-            this.groupBox1.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
-            this.groupBox1.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(3)))), ((int)(((byte)(106)))), ((int)(((byte)(55)))));
-            this.groupBox1.Location = new System.Drawing.Point(12, 254);
-            this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(380, 208);
-            this.groupBox1.TabIndex = 23;
-            this.groupBox1.TabStop = false;
-            this.groupBox1.Text = "  This Terminal  ";
-            //
-            // groupBox2
-            //
-            this.groupBox2.Controls.Add(this.lblprintfile);
-            this.groupBox2.Controls.Add(this.lblprintrequest);
-            this.groupBox2.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
-            this.groupBox2.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(3)))), ((int)(((byte)(106)))), ((int)(((byte)(55)))));
-            this.groupBox2.Location = new System.Drawing.Point(404, 254);
-            this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(583, 208);
-            this.groupBox2.TabIndex = 24;
-            this.groupBox2.TabStop = false;
-            this.groupBox2.Text = "  Current Activity  ";
-            //
-            // lblprintrequest
-            //
-            this.lblprintrequest.AutoSize = true;
-            this.lblprintrequest.Font = new System.Drawing.Font("Segoe UI", 12F);
-            this.lblprintrequest.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(101)))), ((int)(((byte)(104)))), ((int)(((byte)(104)))));
-            this.lblprintrequest.Location = new System.Drawing.Point(18, 34);
-            this.lblprintrequest.Name = "lblprintrequest";
-            this.lblprintrequest.Size = new System.Drawing.Size(0, 21);
-            this.lblprintrequest.TabIndex = 0;
-            //
-            // lblprintfile
-            //
-            this.lblprintfile.AutoSize = true;
-            this.lblprintfile.Font = new System.Drawing.Font("Consolas", 9F);
-            this.lblprintfile.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(101)))), ((int)(((byte)(104)))), ((int)(((byte)(104)))));
-            this.lblprintfile.Location = new System.Drawing.Point(18, 74);
-            this.lblprintfile.MaximumSize = new System.Drawing.Size(545, 0);
-            this.lblprintfile.Name = "lblprintfile";
-            this.lblprintfile.Size = new System.Drawing.Size(0, 15);
-            this.lblprintfile.TabIndex = 1;
-            //
-            // txtadobe
-            //
-            this.txtadobe.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.txtadobe.Location = new System.Drawing.Point(120, 476);
-            this.txtadobe.Name = "txtadobe";
-            this.txtadobe.ReadOnly = true;
-            this.txtadobe.Size = new System.Drawing.Size(867, 27);
-            this.txtadobe.TabIndex = 21;
-            //
-            // label8
-            //
-            this.label8.AutoSize = true;
-            this.label8.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.label8.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(101)))), ((int)(((byte)(104)))), ((int)(((byte)(104)))));
-            this.label8.Location = new System.Drawing.Point(14, 480);
-            this.label8.Name = "label8";
-            this.label8.Size = new System.Drawing.Size(90, 20);
-            this.label8.TabIndex = 22;
-            this.label8.Text = "Adobe Path";
-            //
-            // lblVersion
-            //
-            this.lblVersion.AutoSize = true;
-            this.lblVersion.Font = new System.Drawing.Font("Consolas", 8.5F);
-            this.lblVersion.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(101)))), ((int)(((byte)(104)))), ((int)(((byte)(104)))));
-            this.lblVersion.Location = new System.Drawing.Point(760, 624);
-            this.lblVersion.Name = "lblVersion";
-            this.lblVersion.Size = new System.Drawing.Size(200, 15);
-            this.lblVersion.TabIndex = 35;
-            this.lblVersion.Text = "";
-            //
-            // timer1
+            // timer1 — the print poll (unchanged: 5 s, re-armed by the poll callbacks)
             //
             this.timer1.Interval = 5000;
             this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
             //
+            // timerHealth — refreshes printer state and the "This computer" box every 30 s
+            //
+            this.timerHealth.Interval = 30000;
+            this.timerHealth.Tick += new System.EventHandler(this.timerHealth_Tick);
+
+            //
+            // ===== Header: logo left, shop + connection right =====
+            //
+            this.pnlHeader.BackColor = green;
+            this.pnlHeader.Controls.Add(this.pnlHeaderRight);
+            this.pnlHeader.Controls.Add(this.pictureBox1);
+            this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlHeader.Height = 64;
+            this.pnlHeader.Padding = new System.Windows.Forms.Padding(8, 4, 20, 4);
+            this.pnlHeader.Name = "pnlHeader";
+            // Approved QuickFlora lockup (Resources\QFHEADER.jpg), not redrawn.
+            this.pictureBox1.BackColor = green;
+            this.pictureBox1.Dock = System.Windows.Forms.DockStyle.Left;
+            this.pictureBox1.Image = global::QuickfloraPrinting.Properties.Resources.QFHEADER;
+            this.pictureBox1.Name = "pictureBox1";
+            this.pictureBox1.Width = 430;
+            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.pictureBox1.TabStop = false;
+            // Right side: two stacked lines + pill
+            this.pnlHeaderRight.AutoSize = true;
+            this.pnlHeaderRight.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.pnlHeaderRight.BackColor = green;
+            this.pnlHeaderRight.ColumnCount = 2;
+            this.pnlHeaderRight.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.pnlHeaderRight.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.pnlHeaderRight.RowCount = 2;
+            this.pnlHeaderRight.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.pnlHeaderRight.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.pnlHeaderRight.Controls.Add(this.lblShop, 0, 0);
+            this.pnlHeaderRight.Controls.Add(this.lblTerminalName, 0, 1);
+            this.pnlHeaderRight.Controls.Add(this.lblConn, 1, 0);
+            this.pnlHeaderRight.SetRowSpan(this.lblConn, 2);
+            this.pnlHeaderRight.Dock = System.Windows.Forms.DockStyle.Right;
+            this.pnlHeaderRight.Name = "pnlHeaderRight";
+            this.lblShop.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right;
+            this.lblShop.AutoSize = true;
+            this.lblShop.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
+            this.lblShop.ForeColor = System.Drawing.Color.White;
+            this.lblShop.Margin = new System.Windows.Forms.Padding(0);
+            this.lblShop.Name = "lblShop";
+            this.lblShop.Text = "";
+            this.lblTerminalName.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
+            this.lblTerminalName.AutoSize = true;
+            this.lblTerminalName.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblTerminalName.ForeColor = System.Drawing.Color.FromArgb(213, 233, 220);
+            this.lblTerminalName.Margin = new System.Windows.Forms.Padding(0);
+            this.lblTerminalName.Name = "lblTerminalName";
+            this.lblTerminalName.Text = "";
+            this.lblConn.Anchor = System.Windows.Forms.AnchorStyles.Right;
+            this.lblConn.AutoSize = true;
+            this.lblConn.BackColor = System.Drawing.Color.White;
+            this.lblConn.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
+            this.lblConn.ForeColor = System.Drawing.Color.FromArgb(11, 90, 48);
+            this.lblConn.Margin = new System.Windows.Forms.Padding(16, 0, 0, 0);
+            this.lblConn.Name = "lblConn";
+            this.lblConn.Padding = new System.Windows.Forms.Padding(10, 5, 10, 5);
+            this.lblConn.Text = "●  Connecting...";
+
+            //
+            // ===== Footer: help left, three buttons right =====
+            //
+            this.pnlFooter.BackColor = System.Drawing.Color.White;
+            this.pnlFooter.Controls.Add(this.flowFooter);
+            this.pnlFooter.Controls.Add(this.lblHelp);
+            this.pnlFooter.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.pnlFooter.Height = 56;
+            this.pnlFooter.Padding = new System.Windows.Forms.Padding(24, 0, 20, 0);
+            this.pnlFooter.Name = "pnlFooter";
+            this.pnlFooter.Paint += new System.Windows.Forms.PaintEventHandler(this.pnlFooter_Paint);
+            this.lblHelp.Dock = System.Windows.Forms.DockStyle.Left;
+            this.lblHelp.AutoSize = false;
+            this.lblHelp.Width = 420;
+            this.lblHelp.Font = new System.Drawing.Font("Segoe UI", 9.5F);
+            this.lblHelp.ForeColor = grey;
+            this.lblHelp.Name = "lblHelp";
+            this.lblHelp.Text = "QuickFlora Print App " + Program.AppVersion + "   ·   Help: support@quickflora.com";
+            this.lblHelp.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.flowFooter.AutoSize = true;
+            this.flowFooter.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flowFooter.Controls.Add(this.btnTestDrawer);
+            this.flowFooter.Controls.Add(this.btnCopyDiag);
+            this.flowFooter.Controls.Add(this.btnSettings);
+            this.flowFooter.Dock = System.Windows.Forms.DockStyle.Right;
+            this.flowFooter.Padding = new System.Windows.Forms.Padding(0, 9, 0, 0);
+            this.flowFooter.WrapContents = false;
+            this.flowFooter.Name = "flowFooter";
+            StyleSecondary(this.btnTestDrawer, "Open cash drawer", line, ink);
+            this.btnTestDrawer.Name = "btnTestDrawer";
+            this.btnTestDrawer.Click += new System.EventHandler(this.btnTestDrawer_Click);
+            StyleSecondary(this.btnCopyDiag, "Copy details for support", line, ink);
+            this.btnCopyDiag.Name = "btnCopyDiag";
+            this.btnCopyDiag.Click += new System.EventHandler(this.btnCopyDiag_Click);
+            StyleSecondary(this.btnSettings, "Settings", line, ink);
+            this.btnSettings.Name = "btnSettings";
+            this.btnSettings.Click += new System.EventHandler(this.btnSettings_Click);
+
+            //
+            // ===== Body =====
+            //
+            this.pnlBody.BackColor = ground;
+            this.pnlBody.Controls.Add(this.tblMain);
+            this.pnlBody.Controls.Add(this.pnlGap);
+            this.pnlBody.Controls.Add(this.pnlStatus);
+            this.pnlBody.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pnlBody.Padding = new System.Windows.Forms.Padding(24, 18, 24, 18);
+            this.pnlBody.Name = "pnlBody";
+            //
+            // Status card: badge, two lines, Print test page
+            //
+            this.pnlStatus.Controls.Add(this.pnlStatusText);
+            this.pnlStatus.Controls.Add(this.btnTestPrint);
+            this.pnlStatus.Controls.Add(this.badgeStatus);
+            this.pnlStatus.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlStatus.Height = 88;
+            this.pnlStatus.Padding = new System.Windows.Forms.Padding(20, 16, 20, 16);
+            this.pnlStatus.Name = "pnlStatus";
+            this.badgeStatus.Dock = System.Windows.Forms.DockStyle.Left;
+            this.badgeStatus.Width = 72;
+            this.badgeStatus.Name = "badgeStatus";
+            this.pnlStatusText.Controls.Add(this.lblStatusSub);
+            this.pnlStatusText.Controls.Add(this.lblStatus);
+            this.pnlStatusText.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pnlStatusText.Name = "pnlStatusText";
+            this.lblStatus.AutoEllipsis = true;
+            this.lblStatus.Dock = System.Windows.Forms.DockStyle.Top;
+            this.lblStatus.Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold);
+            this.lblStatus.ForeColor = ink;
+            this.lblStatus.Height = 32;
+            this.lblStatus.Name = "lblStatus";
+            this.lblStatus.Text = "Starting up";
+            this.lblStatusSub.AutoEllipsis = true;
+            this.lblStatusSub.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lblStatusSub.Font = fBody;
+            this.lblStatusSub.ForeColor = grey;
+            this.lblStatusSub.Name = "lblStatusSub";
+            this.lblStatusSub.Text = "Connecting to QuickFlora";
+            this.btnTestPrint.BackColor = green;
+            this.btnTestPrint.Dock = System.Windows.Forms.DockStyle.Right;
+            this.btnTestPrint.FlatAppearance.BorderSize = 0;
+            this.btnTestPrint.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnTestPrint.Font = fBold;
+            this.btnTestPrint.ForeColor = System.Drawing.Color.White;
+            this.btnTestPrint.Name = "btnTestPrint";
+            this.btnTestPrint.Text = "Print test page";
+            this.btnTestPrint.UseVisualStyleBackColor = false;
+            this.btnTestPrint.Width = 160;
+            this.btnTestPrint.Click += new System.EventHandler(this.btnTestPrint_Click);
+            this.pnlGap.Dock = System.Windows.Forms.DockStyle.Top;
+            this.pnlGap.Height = 18;
+            this.pnlGap.Name = "pnlGap";
+            //
+            // Main grid: jobs (fill) | printers + this computer (316)
+            //
+            this.tblMain.ColumnCount = 2;
+            this.tblMain.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tblMain.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 336F));
+            this.tblMain.RowCount = 1;
+            this.tblMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tblMain.Controls.Add(this.cardJobs, 0, 0);
+            this.tblMain.Controls.Add(this.pnlRight, 1, 0);
+            this.tblMain.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tblMain.Margin = new System.Windows.Forms.Padding(0);
+            this.tblMain.Name = "tblMain";
+            // Recent print jobs
+            this.cardJobs.Controls.Add(this.lstJobs);
+            this.cardJobs.Controls.Add(this.lblJobsTitle);
+            this.cardJobs.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.cardJobs.Margin = new System.Windows.Forms.Padding(0, 0, 20, 0);
+            this.cardJobs.Padding = new System.Windows.Forms.Padding(1);
+            this.cardJobs.Name = "cardJobs";
+            StyleCardTitle(this.lblJobsTitle, "Recent print jobs on this computer", fTitle, ink);
+            this.lblJobsTitle.Name = "lblJobsTitle";
+            this.imgRowHeight.ImageSize = new System.Drawing.Size(1, 34);
+            this.lstJobs.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.lstJobs.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
+                this.colTime, this.colForm, this.colFile, this.colPrinter, this.colTook, this.colResult});
+            this.colTime.Text = "Time"; this.colTime.Width = 90;
+            this.colForm.Text = "Form"; this.colForm.Width = 120;
+            this.colFile.Text = "File"; this.colFile.Width = 200;
+            this.colPrinter.Text = "Printer"; this.colPrinter.Width = 160;
+            this.colTook.Text = "Took"; this.colTook.Width = 64;
+            this.colResult.Text = "Status"; this.colResult.Width = 90;
+            this.lstJobs.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lstJobs.Font = fBody;
+            this.lstJobs.ForeColor = ink;
+            this.lstJobs.FullRowSelect = true;
+            this.lstJobs.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.Nonclickable;
+            this.lstJobs.MultiSelect = false;
+            this.lstJobs.Name = "lstJobs";
+            this.lstJobs.SmallImageList = this.imgRowHeight;
+            this.lstJobs.UseCompatibleStateImageBehavior = false;
+            this.lstJobs.View = System.Windows.Forms.View.Details;
+            this.lstJobs.Resize += new System.EventHandler(this.lstJobs_Resize);
+            // Right column
+            this.pnlRight.ColumnCount = 1;
+            this.pnlRight.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.pnlRight.RowCount = 2;
+            this.pnlRight.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 190F));
+            this.pnlRight.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.pnlRight.Controls.Add(this.cardPrinters, 0, 0);
+            this.pnlRight.Controls.Add(this.cardComputer, 0, 1);
+            this.pnlRight.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.pnlRight.Margin = new System.Windows.Forms.Padding(0);
+            this.pnlRight.Name = "pnlRight";
+            // Printers
+            this.cardPrinters.Controls.Add(this.lstPrinters);
+            this.cardPrinters.Controls.Add(this.lblPrintersTitle);
+            this.cardPrinters.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.cardPrinters.Margin = new System.Windows.Forms.Padding(0, 0, 0, 16);
+            this.cardPrinters.Padding = new System.Windows.Forms.Padding(1);
+            this.cardPrinters.Name = "cardPrinters";
+            StyleCardTitle(this.lblPrintersTitle, "Printers", fTitle, ink);
+            this.lblPrintersTitle.Name = "lblPrintersTitle";
+            this.lstPrinters.BorderStyle = System.Windows.Forms.BorderStyle.None;
+            this.lstPrinters.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
+                this.colPrinterName, this.colPrinterState});
+            this.colPrinterName.Width = 190;
+            this.colPrinterState.Width = 120;
+            this.lstPrinters.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lstPrinters.Font = fBody;
+            this.lstPrinters.ForeColor = ink;
+            this.lstPrinters.FullRowSelect = true;
+            this.lstPrinters.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.None;
+            this.lstPrinters.Name = "lstPrinters";
+            this.lstPrinters.SmallImageList = this.imgRowHeight;
+            this.lstPrinters.UseCompatibleStateImageBehavior = false;
+            this.lstPrinters.View = System.Windows.Forms.View.Details;
+            // This computer
+            this.cardComputer.Controls.Add(this.tblComputer);
+            this.cardComputer.Controls.Add(this.lblComputerTitle);
+            this.cardComputer.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.cardComputer.Margin = new System.Windows.Forms.Padding(0);
+            this.cardComputer.Padding = new System.Windows.Forms.Padding(1);
+            this.cardComputer.Name = "cardComputer";
+            StyleCardTitle(this.lblComputerTitle, "This computer", fTitle, ink);
+            this.lblComputerTitle.Name = "lblComputerTitle";
+            this.tblComputer.BackColor = System.Drawing.Color.White;
+            this.tblComputer.ColumnCount = 2;
+            this.tblComputer.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 128F));
+            this.tblComputer.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tblComputer.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tblComputer.Padding = new System.Windows.Forms.Padding(16, 10, 12, 8);
+            this.tblComputer.Name = "tblComputer";
+            this.tblComputer.RowCount = 6;
+            for (int r = 0; r < 5; r++)
+                this.tblComputer.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 28F));
+            this.tblComputer.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            AddInfoRow(this.tblComputer, 0, this.lblPcNameCap, "PC name", this.lblPcName, fBody, grey, ink);
+            AddInfoRow(this.tblComputer, 1, this.lblIpCap, "IP address", this.lblIp, fBody, grey, ink);
+            AddInfoRow(this.tblComputer, 2, this.lblUserCap, "Signed in as", this.lblUser, fBody, grey, ink);
+            AddInfoRow(this.tblComputer, 3, this.lblVersionCap, "App version", this.lblVersion, fBody, grey, ink);
+            AddInfoRow(this.tblComputer, 4, this.lblRmmCap, "Remote support", this.lblRmm, fBody, grey, ink);
+
+            //
             // PrintHome
             //
-            this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(999, 660);
-            this.Controls.Add(this.lblVersion);
-            this.Controls.Add(this.btnCopyDiag);
-            this.Controls.Add(this.btnOpenReceipts);
-            this.Controls.Add(this.btnTestPrint);
-            this.Controls.Add(this.btnTestDrawer);
-            this.Controls.Add(this.pnlStatus);
-            this.Controls.Add(this.groupBox2);
-            this.Controls.Add(this.groupBox1);
-            this.Controls.Add(this.label8);
-            this.Controls.Add(this.txtadobe);
-            this.Controls.Add(this.label2);
-            this.Controls.Add(this.label1);
-            this.Controls.Add(this.pictureBox1);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(96F, 96F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
+            this.BackColor = ground;
+            this.ClientSize = new System.Drawing.Size(1100, 700);
+            this.Controls.Add(this.pnlBody);
+            this.Controls.Add(this.pnlFooter);
+            this.Controls.Add(this.pnlHeader);
+            this.Font = fBody;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.MaximizeBox = false;
+            this.MinimumSize = new System.Drawing.Size(940, 620);
             this.Name = "PrintHome";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "QuickFlora Print ";
+            // Program.BringExistingInstanceToFront finds the running copy by this title
+            // (single-instance, AB#1321), so both use Program.WindowTitle. Includes the version.
+            this.Text = Program.WindowTitle;
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.PrintHome_FormClosing);
             this.Load += new System.EventHandler(this.PrintHome_Load);
             this.Move += new System.EventHandler(this.PrintHome_Move);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.contextMenuStrip1.ResumeLayout(false);
+            this.pnlHeaderRight.ResumeLayout(false);
+            this.pnlHeaderRight.PerformLayout();
+            this.pnlHeader.ResumeLayout(false);
+            this.pnlHeader.PerformLayout();
+            this.flowFooter.ResumeLayout(false);
+            this.pnlFooter.ResumeLayout(false);
+            this.pnlFooter.PerformLayout();
+            this.pnlStatusText.ResumeLayout(false);
             this.pnlStatus.ResumeLayout(false);
-            this.pnlStatus.PerformLayout();
-            this.groupBox1.ResumeLayout(false);
-            this.groupBox1.PerformLayout();
-            this.groupBox2.ResumeLayout(false);
-            this.groupBox2.PerformLayout();
+            this.tblComputer.ResumeLayout(false);
+            this.tblComputer.PerformLayout();
+            this.cardComputer.ResumeLayout(false);
+            this.cardPrinters.ResumeLayout(false);
+            this.pnlRight.ResumeLayout(false);
+            this.cardJobs.ResumeLayout(false);
+            this.tblMain.ResumeLayout(false);
+            this.pnlBody.ResumeLayout(false);
             this.ResumeLayout(false);
-            this.PerformLayout();
+        }
 
+        private static void StyleSecondary(System.Windows.Forms.Button b, string text,
+                                           System.Drawing.Color border, System.Drawing.Color ink)
+        {
+            b.AutoSize = true;
+            b.BackColor = System.Drawing.Color.White;
+            b.FlatAppearance.BorderColor = border;
+            b.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            b.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Bold);
+            b.ForeColor = ink;
+            b.Margin = new System.Windows.Forms.Padding(10, 0, 0, 0);
+            b.MinimumSize = new System.Drawing.Size(0, 38);
+            b.Padding = new System.Windows.Forms.Padding(8, 0, 8, 0);
+            b.Text = text;
+            b.UseVisualStyleBackColor = false;
+        }
+
+        private static void StyleCardTitle(System.Windows.Forms.Label l, string text,
+                                           System.Drawing.Font font, System.Drawing.Color ink)
+        {
+            l.BackColor = System.Drawing.Color.White;
+            l.Dock = System.Windows.Forms.DockStyle.Top;
+            l.Font = font;
+            l.ForeColor = ink;
+            l.Height = 44;
+            l.Padding = new System.Windows.Forms.Padding(14, 0, 0, 0);
+            l.Text = text;
+            l.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+        }
+
+        private static void AddInfoRow(System.Windows.Forms.TableLayoutPanel t, int row,
+                                       System.Windows.Forms.Label cap, string caption,
+                                       System.Windows.Forms.Label value, System.Drawing.Font font,
+                                       System.Drawing.Color grey, System.Drawing.Color ink)
+        {
+            cap.AutoSize = true; cap.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            cap.Font = font; cap.ForeColor = grey; cap.Text = caption;
+            value.AutoEllipsis = true; value.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            value.Font = font; value.ForeColor = ink; value.Text = "";
+            t.Controls.Add(cap, 0, row);
+            t.Controls.Add(value, 1, row);
         }
 
         #endregion
 
-        private System.Windows.Forms.PictureBox pictureBox1;
         private System.Windows.Forms.NotifyIcon notifyIcon1;
         private System.Windows.Forms.ContextMenuStrip contextMenuStrip1;
         private System.Windows.Forms.ToolStripMenuItem exitToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem autoStartToolStripMenuItem;
-        private System.Windows.Forms.Panel pnlStatus;
+        private System.Windows.Forms.Timer timer1;
+        private System.Windows.Forms.Timer timerHealth;
+
+        private System.Windows.Forms.Panel pnlHeader;
+        private System.Windows.Forms.PictureBox pictureBox1;
+        private System.Windows.Forms.TableLayoutPanel pnlHeaderRight;
+        private System.Windows.Forms.Label lblShop;
+        private System.Windows.Forms.Label lblTerminalName;
+        private System.Windows.Forms.Label lblConn;
+
+        private System.Windows.Forms.Panel pnlFooter;
+        private System.Windows.Forms.Label lblHelp;
+        private System.Windows.Forms.FlowLayoutPanel flowFooter;
+        private System.Windows.Forms.Button btnSettings;
+        private System.Windows.Forms.Button btnCopyDiag;
+        private System.Windows.Forms.Button btnTestDrawer;
+
+        private System.Windows.Forms.Panel pnlBody;
+        private QuickfloraPrinting.CardPanel pnlStatus;
+        private QuickfloraPrinting.StatusBadge badgeStatus;
+        private System.Windows.Forms.Panel pnlStatusText;
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.Label lblStatusSub;
-        private System.Windows.Forms.Button btnTestDrawer;
         private System.Windows.Forms.Button btnTestPrint;
-        private System.Windows.Forms.Button btnOpenReceipts;
-        private System.Windows.Forms.Button btnCopyDiag;
+        private System.Windows.Forms.Panel pnlGap;
+        private System.Windows.Forms.TableLayoutPanel tblMain;
+        private QuickfloraPrinting.CardPanel cardJobs;
+        private System.Windows.Forms.Label lblJobsTitle;
+        private System.Windows.Forms.ListView lstJobs;
+        private System.Windows.Forms.ColumnHeader colTime;
+        private System.Windows.Forms.ColumnHeader colFile;
+        private System.Windows.Forms.ColumnHeader colForm;
+        private System.Windows.Forms.ColumnHeader colPrinter;
+        private System.Windows.Forms.ColumnHeader colTook;
+        private System.Windows.Forms.ColumnHeader colResult;
+        private System.Windows.Forms.ImageList imgRowHeight;
+        private System.Windows.Forms.TableLayoutPanel pnlRight;
+        private QuickfloraPrinting.CardPanel cardPrinters;
+        private System.Windows.Forms.Label lblPrintersTitle;
+        private System.Windows.Forms.ListView lstPrinters;
+        private System.Windows.Forms.ColumnHeader colPrinterName;
+        private System.Windows.Forms.ColumnHeader colPrinterState;
+        private QuickfloraPrinting.CardPanel cardComputer;
+        private System.Windows.Forms.Label lblComputerTitle;
+        private System.Windows.Forms.TableLayoutPanel tblComputer;
+        private System.Windows.Forms.Label lblPcNameCap;
+        private System.Windows.Forms.Label lblPcName;
+        private System.Windows.Forms.Label lblIpCap;
+        private System.Windows.Forms.Label lblIp;
+        private System.Windows.Forms.Label lblUserCap;
+        private System.Windows.Forms.Label lblUser;
+        private System.Windows.Forms.Label lblVersionCap;
         private System.Windows.Forms.Label lblVersion;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.Label label3;
-        private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.Label label6;
+        private System.Windows.Forms.Label lblRmmCap;
+        private System.Windows.Forms.Label lblRmm;
+
+        private System.Windows.Forms.TextBox txtcmp;
         private System.Windows.Forms.TextBox txtDivision;
         private System.Windows.Forms.TextBox txtdepartment;
         private System.Windows.Forms.TextBox txtTerminal;
-        private System.Windows.Forms.TextBox txtcmp;
         private System.Windows.Forms.TextBox txtadobe;
-        private System.Windows.Forms.Label label8;
-        private System.Windows.Forms.GroupBox groupBox1;
-        private System.Windows.Forms.Timer timer1;
+        private System.Windows.Forms.TextBox txtdefaultprinter;
         private System.Windows.Forms.Label lbltimer;
-        private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.Label lblprintrequest;
         private System.Windows.Forms.Label lblprintfile;
-        private System.Windows.Forms.TextBox txtdefaultprinter;
-        private System.Windows.Forms.Label label7;
+        private System.Windows.Forms.Button btnOpenReceipts;
     }
 }
