@@ -36,6 +36,7 @@ namespace QuickfloraPrinting
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.timerHealth = new System.Windows.Forms.Timer(this.components);
+            this.timerConfirm = new System.Windows.Forms.Timer(this.components);
 
             this.pnlHeader = new System.Windows.Forms.Panel();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
@@ -159,6 +160,11 @@ namespace QuickfloraPrinting
             //
             this.timerHealth.Interval = 30000;
             this.timerHealth.Tick += new System.EventHandler(this.timerHealth_Tick);
+            //
+            // timerConfirm — AB#3164 (v4): every 2 s while jobs wait for Windows to say "printed"
+            //
+            this.timerConfirm.Interval = 2000;
+            this.timerConfirm.Tick += new System.EventHandler(this.timerConfirm_Tick);
 
             //
             // ===== Header: logo left, shop + connection right =====
@@ -506,6 +512,7 @@ namespace QuickfloraPrinting
         private System.Windows.Forms.ToolStripMenuItem autoStartToolStripMenuItem;
         private System.Windows.Forms.Timer timer1;
         private System.Windows.Forms.Timer timerHealth;
+        private System.Windows.Forms.Timer timerConfirm;
 
         private System.Windows.Forms.Panel pnlHeader;
         private System.Windows.Forms.PictureBox pictureBox1;

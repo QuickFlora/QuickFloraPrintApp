@@ -32,6 +32,8 @@ namespace QuickfloraPrinting
         private int problemWaiting;         // jobs Windows is still holding for it
         private string rmmState;            // null until the first check has run
         private readonly List<JobRow> jobs = new List<JobRow>();
+        private readonly List<JobRow> pendingConfirm = new List<JobRow>();   // AB#3164
+        private bool confirmBusy;
 
         public PrintHome(bool startMinimized)
         {
@@ -490,6 +492,7 @@ namespace QuickfloraPrinting
             int slno = 0;
             DateTime jobStarted = DateTime.Now;   // AB#3189: for the "Took" column
             bool jobShown = false;
+            JobRow sentJob = null;                // AB#3164: the row to confirm once Windows prints it
 
             try
             {
@@ -516,7 +519,8 @@ namespace QuickfloraPrinting
                     string detail = InspectPrintFile("C:\\QFPrintApp\\Receipts\\" + filename, out hadDrawer, out fileSize);
                     bool sentOk = QuickFloraEMV.RawPrinterHelper.SendFileToPrinter(PrintText2, "C:\\QFPrintApp\\Receipts\\" + filename);
                     LogPrintJob(PrintText, filename, slno, PrintText2, detail, hadDrawer, fileSize, sentOk);
-                    AddJob(PrintText, filename, PrintText2, sentOk, (DateTime.Now - jobStarted).TotalSeconds);
+                    sentJob = AddJob(PrintText, filename, PrintText2, sentOk, (DateTime.Now - jobStarted).TotalSeconds);
+                    if (sentJob != null) sentJob.Doc = "QuickFlora-Print";   // raw jobs are spooled under this name (clsPrinting)
                     jobShown = true;
                 }
 
@@ -557,7 +561,8 @@ namespace QuickfloraPrinting
 
                     }
                     LogPrintJob(PrintText, filename, slno, PrintText2, pdfDetail, pdfDrawer, pdfSize, pdfSent);
-                    AddJob(PrintText, filename, PrintText2, pdfSent, (DateTime.Now - jobStarted).TotalSeconds);
+                    sentJob = AddJob(PrintText, filename, PrintText2, pdfSent, (DateTime.Now - jobStarted).TotalSeconds);
+                    if (sentJob != null) sentJob.Doc = filename;              // Adobe spools the PDF under its file name
                     jobShown = true;
                     //Pdf.PrintPDFs("C:\\QFPrintApp\\PDF\\" + PrintText2 + "_" + filename, txtadobe.Text, PrintText2);
 
@@ -593,6 +598,31 @@ namespace QuickfloraPrinting
                 if (!jobShown && FileName.Length > 0)
                     AddJob(PrintText, FileName, PrintText2, false, (DateTime.Now - jobStarted).TotalSeconds);
 
+            }
+
+            // AB#3164 (v4): tell the server "done" only once Windows says the page printed.
+            // CheckPOSForPrinting already marked this row taken ([Read]=0), so it is not sent again
+            // while we wait, and it does not block the jobs behind it. Until 4.0 the row was marked
+            // done here even when the printer was off or the wrong printer (qfdemo 36319, 7 Oct 2026).
+            if (slno > 0 && sentJob != null && sentJob.Ok)
+            {
+                sentJob.Slno = slno;
+                sentJob.Since = jobStarted;
+                sentJob.Confirm = "Printing";
+                pendingConfirm.Add(sentJob);
+                timerConfirm.Enabled = true;
+                RefreshJobList();
+                lblprintfile.Text = lblprintfile.Text + "\r\n" + "3.Waiting for the printer.";
+                timer1.Enabled = true;
+                return;
+            }
+            if (slno > 0 && (sentJob != null || FileName.Length > 0))
+            {
+                // Could not be sent at all: leave it open on the server (taken, not done) so it shows
+                // as not printed instead of being marked done.
+                WriteToFile("NOT PRINTED slno=" + slno + " file=" + FileName + " - left open on the server");
+                timer1.Enabled = true;
+                return;
             }
 
             QFPrintService.QFPrintService obj = new QFPrintService.QFPrintService();
@@ -659,6 +689,120 @@ namespace QuickfloraPrinting
         {
             lblprintfile.Text = lblprintfile.Text + "\r\n" + "3.Print Completed.";
             timer1.Enabled = true;
+        }
+
+        // ==================== AB#3164 (v4) — confirm the page printed before telling the server ====================
+
+        private class SpoolJob { public string Printer; public string Doc; public int Mask; public DateTime Submitted; }
+
+        private void timerConfirm_Tick(object sender, EventArgs e)
+        {
+            if (confirmBusy) return;
+            if (pendingConfirm.Count == 0) { timerConfirm.Enabled = false; return; }
+            confirmBusy = true;
+            System.Threading.ThreadPool.QueueUserWorkItem(delegate
+            {
+                List<SpoolJob> queue = ReadSpoolQueue();
+                try { BeginInvoke(new MethodInvoker(delegate { CheckPending(queue); confirmBusy = false; })); }
+                catch { confirmBusy = false; }
+            });
+        }
+
+        private static List<SpoolJob> ReadSpoolQueue()
+        {
+            List<SpoolJob> list = new List<SpoolJob>();
+            try
+            {
+                using (ManagementObjectSearcher s = new ManagementObjectSearcher(
+                    "SELECT Name, Document, StatusMask, TimeSubmitted FROM Win32_PrintJob"))
+                {
+                    foreach (ManagementObject j in s.Get())
+                    {
+                        string name = Convert.ToString(j["Name"]);
+                        int comma = name.LastIndexOf(',');
+                        if (comma <= 0) continue;
+                        SpoolJob sj = new SpoolJob();
+                        sj.Printer = name.Substring(0, comma);
+                        sj.Doc = Convert.ToString(j["Document"]);
+                        sj.Mask = Convert.ToInt32(j["StatusMask"]);
+                        sj.Submitted = ManagementDateTimeConverter.ToDateTime(Convert.ToString(j["TimeSubmitted"]));
+                        list.Add(sj);
+                    }
+                }
+            }
+            catch { return null; }
+            return list;
+        }
+
+        /// <summary>
+        /// One pass over the jobs waiting for confirmation. Windows' job flags decide:
+        ///  printed/complete = printed; error/offline/paper-out/blocked = not printed (keep watching);
+        ///  gone after being seen without an error = printed (Windows deletes printed jobs).
+        /// A raw receipt can print and vanish before we look, so after 10 s unseen it counts as
+        /// printed if its printer shows no fault. A PDF is spooled by Adobe, which can fail silently,
+        /// so unseen after 2 minutes it is NOT printed.
+        /// </summary>
+        private void CheckPending(List<SpoolJob> queue)
+        {
+            if (queue == null) return;   // WMI failed this time; try again next tick
+            bool changed = false;
+            for (int i = pendingConfirm.Count - 1; i >= 0; i--)
+            {
+                JobRow j = pendingConfirm[i];
+                double age = (DateTime.Now - j.Since).TotalSeconds;
+                SpoolJob match = null;
+                foreach (SpoolJob q in queue)
+                {
+                    if (q.Printer.Equals(j.Printer, StringComparison.OrdinalIgnoreCase)
+                        && q.Doc.Equals(j.Doc, StringComparison.OrdinalIgnoreCase)
+                        && q.Submitted >= j.Since.AddSeconds(-5)) { match = q; break; }
+                }
+
+                string outcome = null;   // "Printed" / "Not printed" when settled
+                if (match != null)
+                {
+                    j.Seen = true;
+                    if ((match.Mask & (128 | 4096)) != 0) outcome = "Printed";
+                    else if ((match.Mask & (2 | 32 | 64 | 512 | 1024)) != 0)
+                    {
+                        if (!j.LastWasError) { j.LastWasError = true; j.Confirm = "Not printed"; changed = true; }
+                    }
+                    else if (j.LastWasError) { j.LastWasError = false; j.Confirm = "Printing"; changed = true; }
+                }
+                else if (j.Seen)
+                {
+                    // Left the queue. After a fault that means someone cancelled it.
+                    outcome = j.LastWasError ? "Not printed" : "Printed";
+                }
+                else if (j.Doc == "QuickFlora-Print" && age > 10 && !PrinterHasFault(j.Printer)) outcome = "Printed";
+                else if (age > 120) outcome = "Not printed";
+
+                if (age > 1800 && outcome == null) outcome = "Not printed";   // stop watching after 30 min
+
+                if (outcome != null)
+                {
+                    pendingConfirm.RemoveAt(i);
+                    j.Confirm = outcome;
+                    j.Waiting = false;
+                    changed = true;
+                    WriteToFile("CONFIRM slno=" + j.Slno + " file=" + j.File + " printer=" + j.Printer
+                        + " result=" + (outcome == "Printed" ? "printed" : "NOT PRINTED") + " after " + age.ToString("0") + "s"
+                        + (outcome == "Printed" ? "" : " - left open on the server"));
+                    if (outcome == "Printed")
+                    {
+                        QFPrintService.QFPrintService obj = new QFPrintService.QFPrintService();
+                        obj.UpdatePOSForPrintingAsync(Program.CompanyID, Program.DivisionID, Program.DepartmentID, j.Slno);
+                    }
+                }
+            }
+            if (changed) { RefreshJobList(); ShowCurrentStatus(); }
+            if (pendingConfirm.Count == 0) timerConfirm.Enabled = false;
+        }
+
+        private bool PrinterHasFault(string printer)
+        {
+            return printer != null && problemPrinter != null
+                && printer.Equals(problemPrinter, StringComparison.OrdinalIgnoreCase);
         }
 
 
@@ -964,6 +1108,13 @@ namespace QuickfloraPrinting
             public string Printer;
             public bool Ok;
             public bool Waiting;          // Windows still holds it and the printer has a fault
+            // AB#3164 (v4) confirmation of a server job
+            public int Slno;
+            public string Doc;            // name Windows spools it under
+            public DateTime Since;
+            public bool Seen;             // found in Windows' queue at least once
+            public bool LastWasError;
+            public string Confirm;        // null (not tracked), "Printing", "Printed", "Not printed"
             public double Seconds = -1;   // -1 = unknown (rows read back from the log)
 
             public string TookText
@@ -984,8 +1135,9 @@ namespace QuickfloraPrinting
             return "PDF";
         }
 
-        private void AddJob(string type, string file, string printer, bool ok, double seconds)
+        private JobRow AddJob(string type, string file, string printer, bool ok, double seconds)
         {
+            JobRow added = null;
             try
             {
                 JobRow j = new JobRow();
@@ -994,10 +1146,12 @@ namespace QuickfloraPrinting
                 jobs.Insert(0, j);
                 if (jobs.Count > 50) jobs.RemoveAt(jobs.Count - 1);
                 lastJob = j;
+                added = j;
                 RefreshJobList();
                 ShowCurrentStatus();
             }
             catch { }
+            return added;
         }
 
         /// <summary>
@@ -1056,9 +1210,12 @@ namespace QuickfloraPrinting
                     it.SubItems.Add(j.TookText);
                     // "Sent" is what the app knows: Windows accepted the job. Whether paper came out
                     // is not reported back to the app in 3.x, so it does not claim "Printed".
-                    bool bad = !j.Ok || j.Waiting;
-                    ListViewItem.ListViewSubItem s = it.SubItems.Add(!j.Ok ? "Failed" : j.Waiting ? "Not printed" : "Sent");
-                    s.ForeColor = bad ? Color.FromArgb(161, 35, 27) : Color.FromArgb(11, 90, 48);
+                    bool bad = !j.Ok || j.Waiting || j.Confirm == "Not printed";
+                    string label = !j.Ok ? "Failed" : (j.Waiting || j.Confirm == "Not printed") ? "Not printed"
+                                 : j.Confirm == "Printed" ? "Printed" : j.Confirm == "Printing" ? "Printing\u2026" : "Sent";
+                    ListViewItem.ListViewSubItem s = it.SubItems.Add(label);
+                    s.ForeColor = bad ? Color.FromArgb(161, 35, 27)
+                                : j.Confirm == "Printing" ? Color.FromArgb(122, 66, 6) : Color.FromArgb(11, 90, 48);
                     s.Font = new Font(lstJobs.Font, FontStyle.Bold);
                     if (bad) it.BackColor = Color.FromArgb(253, 241, 240);
                     lstJobs.Items.Add(it);
