@@ -321,7 +321,7 @@ namespace QuickfloraPrinting
             //
             this.tblMain.ColumnCount = 2;
             this.tblMain.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblMain.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 336F));
+            this.tblMain.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 372F));
             this.tblMain.RowCount = 1;
             this.tblMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tblMain.Controls.Add(this.cardJobs, 0, 0);
@@ -345,9 +345,9 @@ namespace QuickfloraPrinting
             this.colTime.Text = "Time"; this.colTime.Width = 90;
             this.colForm.Text = "Form"; this.colForm.Width = 120;
             this.colFile.Text = "File"; this.colFile.Width = 200;
-            this.colPrinter.Text = "Printer"; this.colPrinter.Width = 160;
+            this.colPrinter.Text = "Printer"; this.colPrinter.Width = 150;
             this.colTook.Text = "Took"; this.colTook.Width = 64;
-            this.colResult.Text = "Status"; this.colResult.Width = 90;
+            this.colResult.Text = "Status"; this.colResult.Width = 112;
             this.lstJobs.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lstJobs.Font = fBody;
             this.lstJobs.ForeColor = ink;
@@ -382,8 +382,8 @@ namespace QuickfloraPrinting
             this.lstPrinters.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.lstPrinters.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
                 this.colPrinterName, this.colPrinterState});
-            this.colPrinterName.Width = 190;
-            this.colPrinterState.Width = 120;
+            this.colPrinterName.Width = 170;
+            this.colPrinterState.Width = 140;
             this.lstPrinters.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lstPrinters.Font = fBody;
             this.lstPrinters.ForeColor = ink;

@@ -397,6 +397,7 @@ namespace QuickfloraPrinting
             // AB#3189: fill the new screen from the values just read.
             lblShop.Text = txtcmp.Text;
             lblTerminalName.Text = "Terminal " + txtTerminal.Text;
+            ScaleListColumns();
             LoadTodaysJobsFromLog();
             RefreshJobList();
             RefreshHealthAsync();
@@ -1263,16 +1264,30 @@ namespace QuickfloraPrinting
                     "AppLog_" + DateTime.Now.ToString("yyyy_MM_dd") + ".txt");
                 if (!System.IO.File.Exists(path)) return;
                 System.Text.RegularExpressions.Regex rx = new System.Text.RegularExpressions.Regex(
-                    @"^(\d\d:\d\d:\d\d)\s+PRINT type=(\S+) file=(.*?) slno=\d+ printer=(.*?) bytes=.* sent=(ok|FAILED)\s*$");
+                    @"^(\d\d:\d\d:\d\d)\s+PRINT type=(\S+) file=(.*?) slno=(\d+) printer=(.*?) bytes=.* sent=(ok|FAILED)\s*$");
+                // AB#3164: 4.0 also logs how each job ended, so a restart keeps Printed / Not printed.
+                System.Text.RegularExpressions.Regex rxConfirm = new System.Text.RegularExpressions.Regex(
+                    @"^\d\d:\d\d:\d\d\s+CONFIRM slno=(\d+) .* result=(printed|NOT PRINTED)");
+                Dictionary<int, JobRow> bySlno = new Dictionary<int, JobRow>();
                 foreach (string l in System.IO.File.ReadAllLines(path))
                 {
+                    System.Text.RegularExpressions.Match c = rxConfirm.Match(l);
+                    if (c.Success)
+                    {
+                        JobRow done;
+                        if (bySlno.TryGetValue(int.Parse(c.Groups[1].Value), out done))
+                            done.Confirm = c.Groups[2].Value == "printed" ? "Printed" : "Not printed";
+                        continue;
+                    }
                     System.Text.RegularExpressions.Match m = rx.Match(l);
                     if (!m.Success) continue;
                     JobRow j = new JobRow();
                     j.When = DateTime.Today + TimeSpan.Parse(m.Groups[1].Value);
                     j.Form = FormName(m.Groups[2].Value, m.Groups[3].Value);
-                    j.File = m.Groups[3].Value; j.Printer = m.Groups[4].Value;
-                    j.Ok = m.Groups[5].Value == "ok";
+                    j.File = m.Groups[3].Value; j.Printer = m.Groups[5].Value;
+                    j.Slno = int.Parse(m.Groups[4].Value);
+                    j.Ok = m.Groups[6].Value == "ok";
+                    bySlno[j.Slno] = j;
                     jobs.Insert(0, j);
                 }
                 while (jobs.Count > 50) jobs.RemoveAt(jobs.Count - 1);
@@ -1313,11 +1328,32 @@ namespace QuickfloraPrinting
                     s.ForeColor = bad ? Color.FromArgb(161, 35, 27)
                                 : j.Confirm == "Printing" ? Color.FromArgb(122, 66, 6) : Color.FromArgb(11, 90, 48);
                     s.Font = new Font(lstJobs.Font, FontStyle.Bold);
-                    if (bad) it.BackColor = Color.FromArgb(253, 241, 240);
+                    if (bad)
+                        foreach (ListViewItem.ListViewSubItem sub in it.SubItems) sub.BackColor = Color.FromArgb(253, 241, 240);
                     lstJobs.Items.Add(it);
                 }
             }
             finally { lstJobs.EndUpdate(); }
+        }
+
+        /// <summary>
+        /// AB#3164: ListView column widths are in raw pixels and are NOT scaled by AutoScaleMode.Dpi,
+        /// so at 125% the printer names and statuses were cut off (Lenovo, 7 Oct 2026). Scale once.
+        /// </summary>
+        private void ScaleListColumns()
+        {
+            try
+            {
+                float f;
+                using (Graphics g = CreateGraphics()) f = g.DpiX / 96f;
+                if (f <= 1.01f) return;
+                foreach (ListView lv in new ListView[] { lstJobs, lstPrinters })
+                    foreach (ColumnHeader c in lv.Columns) c.Width = (int)(c.Width * f);
+                // The printers card only has room for both columns at their scaled size; let the name take the rest.
+                colPrinterName.Width = Math.Max(120, lstPrinters.ClientSize.Width - colPrinterState.Width - 4);
+                lstJobs_Resize(this, EventArgs.Empty);
+            }
+            catch { }
         }
 
         private void lstJobs_Resize(object sender, EventArgs e)
@@ -1380,16 +1416,36 @@ namespace QuickfloraPrinting
                 SetStatus("Starting up", "Connecting to QuickFlora", false);
                 return;
             }
+            int notPrinted = 0; List<string> notPrintedOn = new List<string>();
+            foreach (JobRow j in jobs)
+                if ((j.Waiting || j.Confirm == "Not printed") && (DateTime.Now - j.When).TotalMinutes <= 60)
+                {
+                    notPrinted++;
+                    if (!string.IsNullOrEmpty(j.Printer) && !notPrintedOn.Contains(j.Printer)) notPrintedOn.Add(j.Printer);
+                }
+            string notPrintedText = notPrinted == 0 ? "" : notPrinted + (notPrinted == 1 ? " job" : " jobs") + " not printed";
+
             if (printerProblem != null)
             {
                 // AB#3189: any printer orders are actually going to, not just the one in Config.txt.
                 // 7 Oct 2026: QuickFlora sent a qfdemo order to the Lenovo's old Epson (offline) while
                 // Config.txt named the Canon; 3.5 said "Printing is working". Never again.
+                int shown = Math.Max(notPrinted, problemWaiting);
                 SetStatus(problemPrinter + ": " + printerProblem
-                          + (problemWaiting > 0 ? " \u2014 " + problemWaiting + (problemWaiting == 1 ? " job" : " jobs") + " not printed" : ""),
+                          + (shown > 0 ? " \u2014 " + shown + (shown == 1 ? " job" : " jobs") + " not printed" : ""),
                     "Orders sent to this printer are not printing. Turn it on and check paper and cable"
                     + (problemPrinter != txtdefaultprinter.Text ? ", or ask QuickFlora to send this terminal's orders to " + txtdefaultprinter.Text : "")
+                    + (notPrintedOn.Count > 1 ? ". Also not printed on: " + string.Join(", ", notPrintedOn.FindAll(delegate(string x) { return x != problemPrinter; }).ToArray()) : "")
                     + ".", true);
+                return;
+            }
+            if (notPrinted > 0)
+            {
+                // AB#3164: the printer looks fine but jobs never printed - e.g. Adobe Reader 9 printing
+                // nothing to an IPP-class driver (staging test, 7 Oct 2026).
+                SetStatus(notPrintedText,
+                    "Sent to " + string.Join(", ", notPrintedOn.ToArray()) + " but Windows never printed "
+                    + (notPrinted == 1 ? "it" : "them") + ". Use Print test page, then call QuickFlora support.", true);
                 return;
             }
             if (lastJob != null && !lastJob.Ok && (DateTime.Now - lastJob.When).TotalMinutes < 30)
@@ -1519,8 +1575,8 @@ namespace QuickfloraPrinting
                 }
                 int waiting = WaitingJobs(n);
                 h.Waiting[n] = waiting;
-                if (waiting > 0) state += " \u00B7 " + waiting + " waiting";
-                h.Printers.Add(new string[] { n, state, sev.ToString() });
+                // The list shows "Offline \u00B7 3 waiting"; the headline uses the plain state and its own count.
+                h.Printers.Add(new string[] { n, waiting > 0 ? state + " \u00B7 " + waiting + " waiting" : state, sev.ToString() });
                 // Worst live printer wins: a fault with jobs stuck beats a fault with none.
                 if (sev == 2 && live.Contains(n) && (h.ProblemPrinter == null || waiting > h.ProblemWaiting))
                 {
