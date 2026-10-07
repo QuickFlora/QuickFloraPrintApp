@@ -517,6 +517,7 @@ namespace QuickfloraPrinting
                     lblprintfile.Text = lblprintfile.Text + "\r\n" + "2.Printing file on printer :" + PrintText2;
                     bool hadDrawer; long fileSize;
                     string detail = InspectPrintFile("C:\\QFPrintApp\\Receipts\\" + filename, out hadDrawer, out fileSize);
+                    SpoolWatch.Start(PrintText2, "QuickFlora-Print", DateTime.Now);   // AB#3164: watch before sending
                     bool sentOk = QuickFloraEMV.RawPrinterHelper.SendFileToPrinter(PrintText2, "C:\\QFPrintApp\\Receipts\\" + filename);
                     LogPrintJob(PrintText, filename, slno, PrintText2, detail, hadDrawer, fileSize, sentOk);
                     sentJob = AddJob(PrintText, filename, PrintText2, sentOk, (DateTime.Now - jobStarted).TotalSeconds);
@@ -547,6 +548,7 @@ namespace QuickfloraPrinting
                     bool pdfDrawer; long pdfSize;
                     string pdfDetail = InspectPrintFile("C:\\QFPrintApp\\PDF\\" + filename, out pdfDrawer, out pdfSize);
                     bool pdfSent = true;
+                    SpoolWatch.Start(PrintText2, filename, DateTime.Now);   // AB#3164: watch before Adobe spools it
                     try
                     {
                         Pdf.PrintPDFs("C:\\QFPrintApp\\PDF\\" + filename, txtadobe.Text, PrintText2);
@@ -758,6 +760,15 @@ namespace QuickfloraPrinting
                         && q.Submitted >= j.Since.AddSeconds(-5)) { match = q; break; }
                 }
 
+                // AB#3164: the background watcher may have seen it while the send was still running
+                // (Adobe spools and a fast printer finishes before this timer first looks).
+                SpoolWatch.Sighting seenEarly = SpoolWatch.Get(j.Printer, j.Doc);
+                if (seenEarly != null && seenEarly.Seen)
+                {
+                    j.Seen = true;
+                    if (seenEarly.LastWasError && !j.LastWasError) { j.LastWasError = true; j.Confirm = "Not printed"; changed = true; }
+                }
+
                 string outcome = null;   // "Printed" / "Not printed" when settled
                 if (match != null)
                 {
@@ -781,6 +792,7 @@ namespace QuickfloraPrinting
 
                 if (outcome != null)
                 {
+                    SpoolWatch.Stop(j.Printer, j.Doc);
                     pendingConfirm.RemoveAt(i);
                     j.Confirm = outcome;
                     j.Waiting = false;
@@ -797,6 +809,90 @@ namespace QuickfloraPrinting
             }
             if (changed) { RefreshJobList(); ShowCurrentStatus(); }
             if (pendingConfirm.Count == 0) timerConfirm.Enabled = false;
+        }
+
+        /// <summary>
+        /// AB#3164: background sightings of a job in Windows' queue, started just BEFORE the job is
+        /// sent. Polls every 0.4 s on its own thread so it keeps looking while the UI thread is busy in
+        /// the send (Adobe takes ~10 s). Staging test 7 Oct 2026: without this, a PDF the Canon printed
+        /// during the send was never seen and was wrongly reported "not printed".
+        /// </summary>
+        private static class SpoolWatch
+        {
+            public class Sighting
+            {
+                public string Printer; public string Doc; public DateTime Since;
+                public bool Seen; public bool LastWasError; public DateTime StartedAt;
+            }
+            private static readonly object Gate = new object();
+            private static readonly Dictionary<string, Sighting> Watched = new Dictionary<string, Sighting>(StringComparer.OrdinalIgnoreCase);
+            private static bool running;
+
+            private static string Key(string printer, string doc) { return (printer ?? "") + "|" + (doc ?? ""); }
+
+            public static void Start(string printer, string doc, DateTime since)
+            {
+                try
+                {
+                    lock (Gate)
+                    {
+                        Sighting s = new Sighting();
+                        s.Printer = printer; s.Doc = doc; s.Since = since; s.StartedAt = DateTime.Now;
+                        Watched[Key(printer, doc)] = s;
+                        if (running) return;
+                        running = true;
+                    }
+                    System.Threading.Thread t = new System.Threading.Thread(Loop);
+                    t.IsBackground = true; t.Name = "QF SpoolWatch";
+                    t.Start();
+                }
+                catch { }
+            }
+
+            public static Sighting Get(string printer, string doc)
+            {
+                lock (Gate) { Sighting s; return Watched.TryGetValue(Key(printer, doc), out s) ? s : null; }
+            }
+
+            public static void Stop(string printer, string doc)
+            {
+                lock (Gate) { Watched.Remove(Key(printer, doc)); }
+            }
+
+            private static void Loop()
+            {
+                while (true)
+                {
+                    List<Sighting> list;
+                    lock (Gate)
+                    {
+                        // Drop anything watched for over 35 minutes; CheckPending has settled it by then.
+                        List<string> old = new List<string>();
+                        foreach (KeyValuePair<string, Sighting> kv in Watched)
+                            if ((DateTime.Now - kv.Value.StartedAt).TotalMinutes > 35) old.Add(kv.Key);
+                        foreach (string k in old) Watched.Remove(k);
+                        if (Watched.Count == 0) { running = false; return; }
+                        list = new List<Sighting>(Watched.Values);
+                    }
+                    List<SpoolJob> queue = ReadSpoolQueue();
+                    if (queue != null)
+                    {
+                        foreach (Sighting s in list)
+                            foreach (SpoolJob q in queue)
+                                if (q.Printer.Equals(s.Printer, StringComparison.OrdinalIgnoreCase)
+                                    && q.Doc.Equals(s.Doc, StringComparison.OrdinalIgnoreCase)
+                                    && q.Submitted >= s.Since.AddSeconds(-5))
+                                {
+                                    lock (Gate)
+                                    {
+                                        s.Seen = true;
+                                        s.LastWasError = (q.Mask & (2 | 32 | 64 | 512 | 1024)) != 0;
+                                    }
+                                }
+                    }
+                    System.Threading.Thread.Sleep(400);
+                }
+            }
         }
 
         private bool PrinterHasFault(string printer)
