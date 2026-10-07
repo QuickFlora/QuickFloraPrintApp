@@ -27,7 +27,9 @@ namespace QuickfloraPrinting
         private int pingFailures;
         private double lastPingSeconds;
         private JobRow lastJob;
-        private string printerProblem;      // configured printer's fault, or null when fine
+        private string printerProblem;      // fault on a printer orders are going to, or null when fine
+        private string problemPrinter;      // which printer that is
+        private int problemWaiting;         // jobs Windows is still holding for it
         private string rmmState;            // null until the first check has run
         private readonly List<JobRow> jobs = new List<JobRow>();
 
@@ -961,6 +963,7 @@ namespace QuickfloraPrinting
             public string File;
             public string Printer;
             public bool Ok;
+            public bool Waiting;          // Windows still holds it and the printer has a fault
             public double Seconds = -1;   // -1 = unknown (rows read back from the log)
 
             public string TookText
@@ -1053,10 +1056,11 @@ namespace QuickfloraPrinting
                     it.SubItems.Add(j.TookText);
                     // "Sent" is what the app knows: Windows accepted the job. Whether paper came out
                     // is not reported back to the app in 3.x, so it does not claim "Printed".
-                    ListViewItem.ListViewSubItem s = it.SubItems.Add(j.Ok ? "Sent" : "Failed");
-                    s.ForeColor = j.Ok ? Color.FromArgb(11, 90, 48) : Color.FromArgb(161, 35, 27);
+                    bool bad = !j.Ok || j.Waiting;
+                    ListViewItem.ListViewSubItem s = it.SubItems.Add(!j.Ok ? "Failed" : j.Waiting ? "Not printed" : "Sent");
+                    s.ForeColor = bad ? Color.FromArgb(161, 35, 27) : Color.FromArgb(11, 90, 48);
                     s.Font = new Font(lstJobs.Font, FontStyle.Bold);
-                    if (!j.Ok) it.BackColor = Color.FromArgb(253, 241, 240);
+                    if (bad) it.BackColor = Color.FromArgb(253, 241, 240);
                     lstJobs.Items.Add(it);
                 }
             }
@@ -1125,8 +1129,14 @@ namespace QuickfloraPrinting
             }
             if (printerProblem != null)
             {
-                SetStatus(txtdefaultprinter.Text + ": " + printerProblem,
-                    "Orders will not print on this printer until it is fixed. Check it is on, has paper and is plugged in.", true);
+                // AB#3189: any printer orders are actually going to, not just the one in Config.txt.
+                // 7 Oct 2026: QuickFlora sent a qfdemo order to the Lenovo's old Epson (offline) while
+                // Config.txt named the Canon; 3.5 said "Printing is working". Never again.
+                SetStatus(problemPrinter + ": " + printerProblem
+                          + (problemWaiting > 0 ? " \u2014 " + problemWaiting + (problemWaiting == 1 ? " job" : " jobs") + " not printed" : ""),
+                    "Orders sent to this printer are not printing. Turn it on and check paper and cable"
+                    + (problemPrinter != txtdefaultprinter.Text ? ", or ask QuickFlora to send this terminal's orders to " + txtdefaultprinter.Text : "")
+                    + ".", true);
                 return;
             }
             if (lastJob != null && !lastJob.Ok && (DateTime.Now - lastJob.When).TotalMinutes < 30)
@@ -1174,7 +1184,10 @@ namespace QuickfloraPrinting
         private class HealthInfo
         {
             public List<string[]> Printers = new List<string[]>();   // name, state, severity 0/1/2
-            public string ConfiguredProblem;
+            public string ProblemPrinter;
+            public string ProblemState;
+            public int ProblemWaiting;
+            public Dictionary<string, int> Waiting = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             public string Ip = "";
             public string Rmm = "";
         }
@@ -1191,16 +1204,21 @@ namespace QuickfloraPrinting
             foreach (JobRow j in jobs)
                 if (!string.IsNullOrEmpty(j.Printer) && !names.Contains(j.Printer) && names.Count < 4) names.Add(j.Printer);
             string configured = txtdefaultprinter.Text.Trim();
+            // Printers that matter right now: the configured one, plus any that got a job in the last 30 min.
+            List<string> live = new List<string>();
+            if (configured.Length > 0) live.Add(configured);
+            foreach (JobRow j in jobs)
+                if (!string.IsNullOrEmpty(j.Printer) && (DateTime.Now - j.When).TotalMinutes <= 30 && !live.Contains(j.Printer)) live.Add(j.Printer);
 
             System.Threading.ThreadPool.QueueUserWorkItem(delegate
             {
-                HealthInfo h = ReadHealth(names, configured);
+                HealthInfo h = ReadHealth(names, live);
                 try { BeginInvoke(new MethodInvoker(delegate { ShowHealth(h); })); }
                 catch { }
             });
         }
 
-        private static HealthInfo ReadHealth(List<string> names, string configured)
+        private static HealthInfo ReadHealth(List<string> names, List<string> live)
         {
             HealthInfo h = new HealthInfo();
             try
@@ -1224,6 +1242,14 @@ namespace QuickfloraPrinting
             }
             catch { }
 
+            // AB#3189: also any printer Windows is holding QuickFlora jobs for, even if this app has
+            // no record of them (restarted, log cleared). Windows' queue is the truth, not our memory.
+            foreach (string stuck in PrintersWithStuckQuickFloraJobs())
+            {
+                if (!names.Contains(stuck)) names.Add(stuck);
+                if (!live.Contains(stuck)) live.Add(stuck);
+            }
+
             foreach (string n in names)
             {
                 string state; int sev;
@@ -1238,12 +1264,76 @@ namespace QuickfloraPrinting
                     if (sev < 2) LastJobState(n, ref state, ref sev);
                     if (sev < 2) NetworkState(Convert.ToString(o["PortName"]), ref state, ref sev);
                 }
+                int waiting = WaitingJobs(n);
+                h.Waiting[n] = waiting;
+                if (waiting > 0) state += " \u00B7 " + waiting + " waiting";
                 h.Printers.Add(new string[] { n, state, sev.ToString() });
-                if (n == configured && sev == 2) h.ConfiguredProblem = state;
+                // Worst live printer wins: a fault with jobs stuck beats a fault with none.
+                if (sev == 2 && live.Contains(n) && (h.ProblemPrinter == null || waiting > h.ProblemWaiting))
+                {
+                    h.ProblemPrinter = n; h.ProblemState = state; h.ProblemWaiting = waiting;
+                }
             }
 
             h.Rmm = RmmState();
             return h;
+        }
+
+        /// <summary>Printers holding a QuickFlora job (receipt, worksheet, card...) unprinted for over 30 s.</summary>
+        private static List<string> PrintersWithStuckQuickFloraJobs()
+        {
+            List<string> result = new List<string>();
+            try
+            {
+                using (ManagementObjectSearcher s = new ManagementObjectSearcher(
+                    "SELECT Name, Document, StatusMask, TimeSubmitted FROM Win32_PrintJob"))
+                {
+                    foreach (ManagementObject j in s.Get())
+                    {
+                        int mask = Convert.ToInt32(j["StatusMask"]);
+                        if ((mask & (128 | 256 | 4096)) != 0) continue;
+                        DateTime t = ManagementDateTimeConverter.ToDateTime(Convert.ToString(j["TimeSubmitted"]));
+                        if ((DateTime.Now - t).TotalSeconds <= 30 || (DateTime.Now - t).TotalHours > 24) continue;
+                        string doc = Convert.ToString(j["Document"]);
+                        // Raw receipts are named QuickFlora-Print (clsPrinting); PDFs keep the server's
+                        // file name, which always contains the company ID.
+                        bool ours = doc.StartsWith("QuickFlora", StringComparison.OrdinalIgnoreCase)
+                            || (Program.CompanyID.Length > 0 && doc.IndexOf(Program.CompanyID, StringComparison.OrdinalIgnoreCase) >= 0);
+                        if (!ours) continue;
+                        string name = Convert.ToString(j["Name"]);
+                        int comma = name.LastIndexOf(',');
+                        if (comma > 0 && !result.Contains(name.Substring(0, comma))) result.Add(name.Substring(0, comma));
+                    }
+                }
+            }
+            catch { }
+            return result;
+        }
+
+        /// <summary>Jobs Windows is still holding for this printer (not printed, not complete) for over 30 s.</summary>
+        private static int WaitingJobs(string printer)
+        {
+            int n = 0;
+            try
+            {
+                using (ManagementObjectSearcher s = new ManagementObjectSearcher(
+                    "SELECT Name, StatusMask, TimeSubmitted FROM Win32_PrintJob"))
+                {
+                    foreach (ManagementObject j in s.Get())
+                    {
+                        string name = Convert.ToString(j["Name"]);
+                        int comma = name.LastIndexOf(',');
+                        if (comma <= 0 || !name.Substring(0, comma).Equals(printer, StringComparison.OrdinalIgnoreCase)) continue;
+                        int mask = Convert.ToInt32(j["StatusMask"]);
+                        // 128 printed, 256 deleted, 4096 complete
+                        if ((mask & (128 | 256 | 4096)) != 0) continue;
+                        DateTime t = ManagementDateTimeConverter.ToDateTime(Convert.ToString(j["TimeSubmitted"]));
+                        if ((DateTime.Now - t).TotalSeconds > 30) n++;
+                    }
+                }
+            }
+            catch { }
+            return n;
         }
 
         /// <summary>
@@ -1405,7 +1495,19 @@ namespace QuickfloraPrinting
                 if (h.Printers.Count == 0) lstPrinters.Items.Add("No printer set in Config.txt");
                 lstPrinters.EndUpdate();
 
-                printerProblem = h.ConfiguredProblem;
+                printerProblem = h.ProblemPrinter == null ? null : h.ProblemState;
+                problemPrinter = h.ProblemPrinter;
+                problemWaiting = h.ProblemWaiting;
+                bool changed = false;
+                foreach (JobRow j in jobs)
+                {
+                    int w; h.Waiting.TryGetValue(j.Printer ?? "", out w);
+                    bool waitingNow = j.Ok && w > 0 && h.ProblemPrinter != null
+                        && j.Printer.Equals(h.ProblemPrinter, StringComparison.OrdinalIgnoreCase)
+                        && (DateTime.Now - j.When).TotalMinutes <= 60;
+                    if (waitingNow != j.Waiting) { j.Waiting = waitingNow; changed = true; }
+                }
+                if (changed) RefreshJobList();
                 ShowCurrentStatus();
             }
             catch { }
