@@ -1739,6 +1739,13 @@ namespace QuickfloraPrinting
                     + ".", true);
                 return;
             }
+            if (otherCopies.Count > 0)
+            {
+                SetStatus("Another copy of the print app is running",
+                    "Also running: " + string.Join("; ", otherCopies.ToArray()) + ". Two copies both pick up this terminal's orders. "
+                    + "Close the other copy, or call QuickFlora support (support@quickflora.com).", 1);
+                return;
+            }
             if (notPrinted > 0)
             {
                 // AB#3164: the printer looks fine but jobs never printed - e.g. Adobe Reader 9 printing
@@ -1799,6 +1806,7 @@ namespace QuickfloraPrinting
             public Dictionary<string, int> Waiting = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             public string Ip = "";
             public string Rmm = "";
+            public List<string> OtherCopies = new List<string>();   // AB#3384: other print-app copies running
         }
 
         /// <summary>WMI and DNS can take a second or two on a busy PC, so they run off the UI thread.</summary>
@@ -1885,7 +1893,32 @@ namespace QuickfloraPrinting
             }
 
             h.Rmm = RmmState();
+            h.OtherCopies = OtherCopies();
             return h;
+        }
+
+        /// <summary>
+        /// AB#3384: other copies of the print app running on this PC. V5 copies cannot start twice, but
+        /// an older version (or one in another folder) can, and then two copies serve one terminal
+        /// (Berkeley BFS-HP-6, 8 Oct 2026: an old copy in bin\Release beside the real one).
+        /// </summary>
+        private static List<string> OtherCopies()
+        {
+            List<string> result = new List<string>();
+            try
+            {
+                int me = Process.GetCurrentProcess().Id;
+                foreach (Process p in Process.GetProcessesByName("QuickfloraPrinting"))
+                {
+                    if (p.Id == me) continue;
+                    string where;
+                    try { where = p.MainModule.FileName; }
+                    catch { where = "another Windows user's session"; }   // no access to other users' processes
+                    result.Add(where + " (session " + p.SessionId + ")");
+                }
+            }
+            catch { }
+            return result;
         }
 
         /// <summary>Printers holding a QuickFlora job (receipt, worksheet, card...) unprinted for over 30 s.</summary>
@@ -2108,6 +2141,15 @@ namespace QuickfloraPrinting
                 printerProblem = h.ProblemPrinter == null ? null : h.ProblemState;
                 problemPrinter = h.ProblemPrinter;
                 problemWaiting = h.ProblemWaiting;
+                AlertPrinterProblem(h);
+                otherCopies = h.OtherCopies;
+                string copies = string.Join("; ", h.OtherCopies.ToArray());
+                if (copies != reportedCopies)
+                {
+                    if (copies.Length > 0)
+                        ReportEvent("Two print apps running", "", "pc=" + Environment.MachineName + " | also running=" + copies);
+                    reportedCopies = copies;
+                }
                 bool changed = false;
                 foreach (JobRow j in jobs)
                 {
@@ -2135,6 +2177,57 @@ namespace QuickfloraPrinting
         }
 
         private DateTime lastStatusReport = DateTime.MinValue;
+
+        // ==================== V5 (AB#3384, AB#3385) ====================
+
+        private List<string> otherCopies = new List<string>();
+        private string reportedCopies = "";
+        private string reportedProblem;                 // "printer|state" last sent to the server, null when fine
+        private string reportedProblemPrinter;
+        private DateTime problemSince;
+        private DateTime lastProblemBalloon = DateTime.MinValue;
+
+        /// <summary>
+        /// AB#3385: tell people the moment a printer orders go to stops printing. Before V5 the red
+        /// banner was the only sign, and the window is usually hidden in the tray: Berkeley BFS-HP-6's
+        /// Dell jammed on 8 Oct 2026 with 12 work tickets waiting and nobody knew.
+        ///  - "Printer problem" goes to the server at once (Order Print Logs page), "Printer OK again" when it clears;
+        ///  - a Windows notification from the tray icon, repeated every 10 minutes while it lasts.
+        /// Never opens the window, so it cannot take over the screen during order entry.
+        /// </summary>
+        private void AlertPrinterProblem(HealthInfo h)
+        {
+            try
+            {
+                string key = h.ProblemPrinter == null ? null : h.ProblemPrinter + "|" + h.ProblemState;
+                if (key != reportedProblem)
+                {
+                    if (key != null)
+                    {
+                        if (reportedProblem == null) problemSince = DateTime.Now;
+                        ReportEvent("Printer problem", "", "pc=" + Environment.MachineName + " | printer=" + h.ProblemPrinter
+                            + " | state=" + h.ProblemState + " | waiting=" + h.ProblemWaiting);
+                        lastProblemBalloon = DateTime.MinValue;   // new or changed problem: notify now
+                    }
+                    else
+                    {
+                        ReportEvent("Printer OK again", "", "pc=" + Environment.MachineName + " | printer=" + reportedProblemPrinter
+                            + " | after=" + (DateTime.Now - problemSince).TotalMinutes.ToString("0") + "min");
+                    }
+                    reportedProblem = key;
+                    reportedProblemPrinter = h.ProblemPrinter;
+                }
+                if (key != null && (DateTime.Now - lastProblemBalloon).TotalMinutes >= 10)
+                {
+                    lastProblemBalloon = DateTime.Now;
+                    notifyIcon1.ShowBalloonTip(10000, "Printer problem: " + h.ProblemPrinter,
+                        h.ProblemState + (h.ProblemWaiting > 0 ? " \u2014 " + h.ProblemWaiting + (h.ProblemWaiting == 1 ? " order" : " orders") + " waiting" : "")
+                        + ". Orders are not printing on this printer. Check it is on, has paper and no paper is stuck.",
+                        ToolTipIcon.Error);
+                }
+            }
+            catch { }
+        }
 
 }
 }

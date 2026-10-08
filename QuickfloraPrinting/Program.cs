@@ -46,6 +46,10 @@ namespace QuickfloraPrinting
         }
 
         private const string SingleInstanceMutexName = "QuickfloraPrintingSingleInstance";
+        // V5 (AB#3384): one copy per PC, not per Windows session. The name above is per session, so on
+        // 8 Oct 2026 a copy started by the installer in session 0 and the user's copy both served the
+        // Lenovo's terminal. "Global\" makes it machine-wide.
+        private const string MachineMutexName = @"Global\QuickfloraPrintingOnePerPC";
         private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
         private const string RunValueName = "QuickfloraPrinting";
         private const string PrefKeyPath = @"Software\QuickfloraPrinting";
@@ -84,13 +88,57 @@ namespace QuickfloraPrinting
                     return;
                 }
 
-                // Register to run at user login (idempotent, respects an
-                // explicit opt-out made via the tray menu).
-                EnsureAutoStart();
+                Mutex machine;
+                if (!TakeMachineMutex(out machine))
+                {
+                    // Another copy runs in a different Windows session (another user, or one started by
+                    // an installer or remote support). Two copies would both pick up this terminal's orders.
+                    if (!startMinimized && Environment.UserInteractive)
+                        MessageBox.Show("The QuickFlora Print App is already running on this computer for another Windows user.\r\n\r\n" +
+                            "Only one copy can run on a computer, so this one will close. Orders keep printing through the other copy.",
+                            Caption("Already running"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
 
-                Application.EnableVisualStyles();
-                Application.SetCompatibleTextRenderingDefault(false);
-                Application.Run(new PrintHome(startMinimized));
+                try
+                {
+                    // Register to run at user login (idempotent, respects an
+                    // explicit opt-out made via the tray menu).
+                    EnsureAutoStart();
+
+                    Application.EnableVisualStyles();
+                    Application.SetCompatibleTextRenderingDefault(false);
+                    Application.Run(new PrintHome(startMinimized));
+                }
+                finally
+                {
+                    if (machine != null) { try { machine.ReleaseMutex(); } catch { } machine.Close(); }
+                }
+            }
+        }
+
+        /// <summary>
+        /// AB#3384: false only when another copy on this PC already holds the machine-wide lock.
+        /// If Windows will not let us create the lock at all, carry on (printing matters more).
+        /// </summary>
+        private static bool TakeMachineMutex(out Mutex machine)
+        {
+            machine = null;
+            try
+            {
+                bool createdNew;
+                Mutex m = new Mutex(true, MachineMutexName, out createdNew);
+                if (createdNew) { machine = m; return true; }
+                m.Close();
+                return false;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return false;   // exists, owned by another user's copy
+            }
+            catch
+            {
+                return true;
             }
         }
 
