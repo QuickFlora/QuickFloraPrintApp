@@ -29,3 +29,17 @@ For Rajesh / AB#3171. Tested 2026-10-08 on the Lenovo test PC, which had a real 
 
 Check the shop on POSN → Order Print Logs: the PC should show **Connected**, and after the update its
 printers are listed. Print App 4.0.2 also reports any page that did not print, with the reason.
+
+## One-file setup per shop (RMM agent + print app) - easiest for a PC without RMM
+
+`installer/QuickFloraPrintBundle.iss` builds one .exe per shop, e.g.
+`QuickFloraPrintBundle-Carmel-v4.0.2.exe`. Double-click it on the shop PC (Run as administrator;
+Windows shows "Windows protected your PC" until code signing is set up: More info -> Run anyway).
+It installs the shop's RMM agent, backs up the current print app to
+`C:\QFPrintApp\backup-before-<version>-<date>`, updates the print app (keeping Config.txt), starts
+it and shows a plain summary. If the PC has no print app set up (no Config.txt) it installs the RMM
+agent only. Log: `C:\QFPrintApp\bundle-install.log`.
+
+The bundle contains the shop's RMM enrollment key (valid until the RMM deployment expires), so it is
+shared only on the private ADO case - never on GitHub (this repo is public) or by public link.
+Tested 2026-10-08 on the Lenovo: 3.4.0 -> 4.0.2, Config.txt unchanged, backup made, app started.
