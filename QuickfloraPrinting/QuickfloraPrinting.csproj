@@ -61,6 +61,7 @@
     <Compile Include="clsPrinting.cs" />
     <Compile Include="clsQFPrinting.cs" />
     <Compile Include="PdfPrinter.cs" />
+    <Compile Include="PrintMonitor.cs" />
     <Compile Include="HtmlPrinter.cs" />
     <Compile Include="SettingsView.cs">
       <SubType>Form</SubType>

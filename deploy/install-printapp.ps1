@@ -72,5 +72,16 @@ $cfgAfter = if (Test-Path $cfg) { Md5 $cfg } else { '' }
 $xc = Join-Path $dir 'QuickfloraPrinting.exe.config'
 if (Test-Path $xc) { 'server addresses: ' + ((Select-String -Path $xc -Pattern 'https?://[^<"]+' -AllMatches | ForEach-Object { $_.Matches.Value } | Sort-Object -Unique) -join ', ') }
 Remove-Item $setup -Force
+
+# 6. AB#3164: 4.0.3+ sends each ticket's result to the Print Monitor. The app runs as the shop user,
+#    who cannot read PrinterWatch's key (SYSTEM/Administrators only), so copy the write-only fleet key
+#    beside the exe. No PrinterWatch key on this PC = no reporting; printing is unaffected.
+$pwKey = 'C:\ProgramData\PrinterWatch\ingest.key'
+if (Test-Path $pwKey) {
+    $appKey = Join-Path $dir 'monitor.key'
+    Copy-Item $pwKey $appKey -Force
+    icacls $appKey /inheritance:r /grant:r 'SYSTEM:F' 'Administrators:F' 'Users:R' | Out-Null
+    'Print Monitor key: copied beside the app'
+} else { 'Print Monitor key: none on this PC (PrinterWatch not set up) - the app will not report to the Print Monitor' }
 if ($p.ExitCode -ne 0 -or -not $now.StartsWith($want) -or ($cfgBefore -and $cfgBefore -ne $cfgAfter)) { 'RESULT: PROBLEM - check the lines above; rollback-printapp.ps1 restores the backup'; exit 4 }
 'RESULT: OK - now run start-printapp.ps1 as the logged-in user'

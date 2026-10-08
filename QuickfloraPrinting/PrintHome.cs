@@ -34,6 +34,8 @@ namespace QuickfloraPrinting
         private readonly List<JobRow> jobs = new List<JobRow>();
         private readonly List<JobRow> pendingConfirm = new List<JobRow>();   // AB#3164
         private bool confirmBusy;
+        private System.Windows.Forms.Timer timerMonitor;   // AB#3164: Print Monitor heartbeat
+        private List<string[]> monitorPrinters;            // last Printers list shown, for the heartbeat
 
         public PrintHome(bool startMinimized)
         {
@@ -188,6 +190,7 @@ namespace QuickfloraPrinting
                     location + " | printer=" + txtdefaultprinter.Text + " | " + ex.StackTrace);
             }
             catch { }
+            PrintMonitor.Error(location, order, txtdefaultprinter.Text, ex);
         }
 
         /// <summary>
@@ -438,6 +441,26 @@ namespace QuickfloraPrinting
             RefreshJobList();
             RefreshHealthAsync();
             timerHealth.Enabled = true;
+
+            // AB#3164: heartbeat to the Print Monitor every 30 s (also sends any queued job results).
+            timerMonitor = new System.Windows.Forms.Timer();
+            timerMonitor.Interval = 30000;
+            timerMonitor.Tick += delegate { MonitorBeat(); };
+            timerMonitor.Enabled = true;
+        }
+
+        private void MonitorBeat()
+        {
+            try
+            {
+                int notPrinted = 0;
+                foreach (JobRow j in jobs)
+                    if ((j.Waiting || j.Confirm == "Not printed") && (DateTime.Now - j.When).TotalMinutes <= 60) notPrinted++;
+                PrintMonitor.Beat(!pingFailing && lastPingOk != DateTime.MinValue,
+                    lastJob == null ? DateTime.MinValue : lastJob.When, pendingConfirm.Count, notPrinted,
+                    txtdefaultprinter.Text.Trim(), monitorPrinters);
+            }
+            catch { }
         }
 
 
@@ -776,6 +799,8 @@ namespace QuickfloraPrinting
                 // Could not be sent at all: leave it open on the server (taken, not done) so it shows
                 // as not printed instead of being marked done.
                 WriteToFile("NOT PRINTED slno=" + slno + " file=" + FileName + " - left open on the server");
+                PrintMonitor.Job(jobStarted, slno, FormName(PrintText, FileName), FileName, PrintText2, false,
+                    "Not printed: could not be sent to the printer");
                 timer1.Enabled = true;
                 return;
             }
@@ -954,6 +979,9 @@ namespace QuickfloraPrinting
                     WriteToFile("CONFIRM slno=" + j.Slno + " file=" + j.File + " printer=" + j.Printer
                         + " result=" + (outcome == "Printed" ? "printed" : "NOT PRINTED") + " after " + age.ToString("0") + "s"
                         + (outcome == "Printed" ? "" : " - left open on the server"));
+                    PrintMonitor.Job(j.Since, j.Slno, j.Form, j.File, j.Printer, outcome == "Printed",
+                        (outcome == "Printed" ? "Printed" : "Not printed: " + NotPrintedReason(j, age))
+                        + " after " + age.ToString("0") + "s" + (j.Slno == 0 ? " (reprint)" : ""));
                     if (outcome != "Printed")
                         ReportEvent("Not printed", j.File, "slno=" + j.Slno + " | printer=" + j.Printer + " | form=" + j.Form
                             + " | reason=" + NotPrintedReason(j, age) + " | after=" + age.ToString("0") + "s");
@@ -2056,6 +2084,7 @@ namespace QuickfloraPrinting
             {
                 lblIp.Text = h.Ip;
                 lblRmm.Text = h.Rmm;
+                monitorPrinters = h.Printers;
                 lblRmm.ForeColor = h.Rmm == "Connected" ? Color.FromArgb(11, 90, 48) : Color.FromArgb(161, 35, 27);
                 rmmState = h.Rmm;
 
