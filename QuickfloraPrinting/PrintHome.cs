@@ -191,6 +191,42 @@ namespace QuickfloraPrinting
         }
 
         /// <summary>
+        /// 4.0.2: tell the server what the shop PC knows, for the POSN Order Print Logs page.
+        /// Goes through the existing InsertErrorDetails web method into POSPrintAppError, so no server or
+        /// database change. [Error] holds the event name the page looks for; Details is "key=value | ...".
+        /// Only exceptions to the normal flow are sent (not every printed job) plus a status line every
+        /// 30 minutes, to keep the table small. Asynchronous and wrapped: never slows or stops printing.
+        /// </summary>
+        private void ReportEvent(string evt, string file, string details)
+        {
+            try
+            {
+                // POSPrintAppError.[Order] is nvarchar(50); a longer value makes the insert fail, so the
+                // full file name also goes into Details.
+                string f = file == null ? "" : file;
+                string order = f.Length > 50 ? f.Substring(0, 50) : f;
+                QFPrintService.QFPrintService svc = new QFPrintService.QFPrintService();
+                svc.InsertErrorDetailsAsync(Program.CompanyID, Program.DivisionID, Program.DepartmentID, Program.TerminalName,
+                    order, evt, "v=" + Program.AppVersion.TrimStart('v') + (f.Length > 0 ? " | file=" + f : "") + " | " + details);
+            }
+            catch { }
+        }
+
+        /// <summary>Why a job did not print, from Windows' job flags (StatusMask) and whether it was ever seen.</summary>
+        private static string NotPrintedReason(JobRow j, double age)
+        {
+            if ((j.LastMask & 32) != 0) return "printer offline";
+            if ((j.LastMask & 64) != 0) return "printer out of paper";
+            if ((j.LastMask & 1024) != 0) return "printer needs attention";
+            if ((j.LastMask & 2) != 0) return "printer error";
+            if ((j.LastMask & 512) != 0) return "print queue blocked";
+            if (!j.Seen) return "no print job reached Windows within 2 minutes";
+            if (j.LastWasError) return "removed from the Windows queue after an error";
+            if (age > 1800) return "still not printed after 30 minutes";
+            return "not confirmed";
+        }
+
+        /// <summary>
         /// AB#1323 — record what was actually sent to the printer, including whether the
         /// cash-drawer byte (0x07) was present. A production incident took a day to answer that
         /// question by reading raw bytes off a server; this line answers it in seconds.
@@ -637,6 +673,7 @@ namespace QuickfloraPrinting
                         else
                         {
                             WriteToFile("HTML print failed for " + htmlName + " - falling back to the PDF");
+                            ReportEvent("HTML print failed, PDF used", htmlName, "slno=" + slno + " | printer=" + PrintText2 + " |" + htmlDetail);
                         }
                     }
                 }
@@ -892,6 +929,7 @@ namespace QuickfloraPrinting
                     if ((match.Mask & (128 | 4096)) != 0) outcome = "Printed";
                     else if ((match.Mask & (2 | 32 | 64 | 512 | 1024)) != 0)
                     {
+                        j.LastMask = match.Mask;
                         if (!j.LastWasError) { j.LastWasError = true; j.Confirm = "Not printed"; changed = true; }
                     }
                     else if (j.LastWasError) { j.LastWasError = false; j.Confirm = "Printing"; changed = true; }
@@ -916,6 +954,9 @@ namespace QuickfloraPrinting
                     WriteToFile("CONFIRM slno=" + j.Slno + " file=" + j.File + " printer=" + j.Printer
                         + " result=" + (outcome == "Printed" ? "printed" : "NOT PRINTED") + " after " + age.ToString("0") + "s"
                         + (outcome == "Printed" ? "" : " - left open on the server"));
+                    if (outcome != "Printed")
+                        ReportEvent("Not printed", j.File, "slno=" + j.Slno + " | printer=" + j.Printer + " | form=" + j.Form
+                            + " | reason=" + NotPrintedReason(j, age) + " | after=" + age.ToString("0") + "s");
                     if (outcome == "Printed" && j.Slno > 0)   // a reprint (slno 0) is not a server job
                     {
                         QFPrintService.QFPrintService obj = new QFPrintService.QFPrintService();
@@ -1326,6 +1367,7 @@ namespace QuickfloraPrinting
             public DateTime Since;
             public bool Seen;             // found in Windows' queue at least once
             public bool LastWasError;
+            public int LastMask;          // 4.0.2: Windows job flags at the last fault, for the reason sent to the server
             public string Confirm;        // null (not tracked), "Printing", "Printed", "Not printed"
             public double Seconds = -1;   // -1 = unknown (rows read back from the log)
 
@@ -1536,6 +1578,7 @@ namespace QuickfloraPrinting
             SetDefaultSystemPrinter(txtdefaultprinter.Text);
 
             WriteToFile("REPRINT file=" + src.File + " printer=" + src.Printer + detail + " sent=" + (ok ? "ok" : "FAILED"));
+            ReportEvent("Reprint", src.File, "printer=" + src.Printer + " | form=" + src.Form + " | sent=" + (ok ? "ok" : "FAILED") + detail);
             JobRow j = AddJob(isHtml || isPdf ? "PDF" : "Text", src.File, src.Printer, ok, (DateTime.Now - started).TotalSeconds);
             if (j == null) return;
             j.Form = src.Form + " (reprint)";
@@ -2046,9 +2089,22 @@ namespace QuickfloraPrinting
                 }
                 if (changed) RefreshJobList();
                 ShowCurrentStatus();
+
+                // 4.0.2: status line for the POSN Order Print Logs page, at start and every 30 minutes.
+                if ((DateTime.Now - lastStatusReport).TotalMinutes >= 30)
+                {
+                    lastStatusReport = DateTime.Now;
+                    List<string> ps = new List<string>();
+                    foreach (string[] p in h.Printers) ps.Add(p[0] + ": " + p[1]);
+                    ReportEvent("Print app status", "", "pc=" + Environment.MachineName + " | ip=" + h.Ip
+                        + " | pickup=" + (useLivePickup ? "live" : "poll") + " | rmm=" + h.Rmm
+                        + " | printers=" + string.Join("; ", ps.ToArray()));
+                }
             }
             catch { }
         }
+
+        private DateTime lastStatusReport = DateTime.MinValue;
 
 }
 }
