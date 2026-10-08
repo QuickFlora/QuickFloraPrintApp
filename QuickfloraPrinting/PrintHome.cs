@@ -794,10 +794,11 @@ namespace QuickfloraPrinting
                 timer1.Enabled = true;
                 return;
             }
-            if (slno > 0 && (sentJob != null || FileName.Length > 0))
+            if (slno > 0)
             {
                 // Could not be sent at all: leave it open on the server (taken, not done) so it shows
-                // as not printed instead of being marked done.
+                // as not printed instead of being marked done. 4.0.4: also when it failed before the
+                // file name was known (staging test 8 Oct 2026: such a job fell through and was marked done).
                 WriteToFile("NOT PRINTED slno=" + slno + " file=" + FileName + " - left open on the server");
                 PrintMonitor.Job(jobStarted, slno, FormName(PrintText, FileName), FileName, PrintText2, false,
                     "Not printed: could not be sent to the printer");
