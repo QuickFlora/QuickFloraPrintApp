@@ -36,6 +36,7 @@ namespace QuickfloraPrinting
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.timerHealth = new System.Windows.Forms.Timer(this.components);
+            this.timerConfirm = new System.Windows.Forms.Timer(this.components);
 
             this.pnlHeader = new System.Windows.Forms.Panel();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
@@ -50,6 +51,7 @@ namespace QuickfloraPrinting
             this.btnSettings = new System.Windows.Forms.Button();
             this.btnCopyDiag = new System.Windows.Forms.Button();
             this.btnTestDrawer = new System.Windows.Forms.Button();
+            this.btnReprint = new System.Windows.Forms.Button();
 
             this.pnlBody = new System.Windows.Forms.Panel();
             this.pnlStatus = new QuickfloraPrinting.CardPanel();
@@ -159,6 +161,11 @@ namespace QuickfloraPrinting
             //
             this.timerHealth.Interval = 30000;
             this.timerHealth.Tick += new System.EventHandler(this.timerHealth_Tick);
+            //
+            // timerConfirm — AB#3164 (v4): every 2 s while jobs wait for Windows to say "printed"
+            //
+            this.timerConfirm.Interval = 2000;
+            this.timerConfirm.Tick += new System.EventHandler(this.timerConfirm_Tick);
 
             //
             // ===== Header: logo left, shop + connection right =====
@@ -239,6 +246,7 @@ namespace QuickfloraPrinting
             this.lblHelp.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.flowFooter.AutoSize = true;
             this.flowFooter.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flowFooter.Controls.Add(this.btnReprint);
             this.flowFooter.Controls.Add(this.btnTestDrawer);
             this.flowFooter.Controls.Add(this.btnCopyDiag);
             this.flowFooter.Controls.Add(this.btnSettings);
@@ -246,6 +254,10 @@ namespace QuickfloraPrinting
             this.flowFooter.Padding = new System.Windows.Forms.Padding(0, 9, 0, 0);
             this.flowFooter.WrapContents = false;
             this.flowFooter.Name = "flowFooter";
+            StyleSecondary(this.btnReprint, "Reprint", line, ink);
+            this.btnReprint.Name = "btnReprint";
+            this.btnReprint.Enabled = false;
+            this.btnReprint.Click += new System.EventHandler(this.btnReprint_Click);
             StyleSecondary(this.btnTestDrawer, "Open cash drawer", line, ink);
             this.btnTestDrawer.Name = "btnTestDrawer";
             this.btnTestDrawer.Click += new System.EventHandler(this.btnTestDrawer_Click);
@@ -315,7 +327,7 @@ namespace QuickfloraPrinting
             //
             this.tblMain.ColumnCount = 2;
             this.tblMain.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblMain.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 336F));
+            this.tblMain.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 372F));
             this.tblMain.RowCount = 1;
             this.tblMain.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tblMain.Controls.Add(this.cardJobs, 0, 0);
@@ -339,9 +351,9 @@ namespace QuickfloraPrinting
             this.colTime.Text = "Time"; this.colTime.Width = 90;
             this.colForm.Text = "Form"; this.colForm.Width = 120;
             this.colFile.Text = "File"; this.colFile.Width = 200;
-            this.colPrinter.Text = "Printer"; this.colPrinter.Width = 160;
+            this.colPrinter.Text = "Printer"; this.colPrinter.Width = 150;
             this.colTook.Text = "Took"; this.colTook.Width = 64;
-            this.colResult.Text = "Status"; this.colResult.Width = 90;
+            this.colResult.Text = "Status"; this.colResult.Width = 112;
             this.lstJobs.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lstJobs.Font = fBody;
             this.lstJobs.ForeColor = ink;
@@ -353,6 +365,8 @@ namespace QuickfloraPrinting
             this.lstJobs.UseCompatibleStateImageBehavior = false;
             this.lstJobs.View = System.Windows.Forms.View.Details;
             this.lstJobs.Resize += new System.EventHandler(this.lstJobs_Resize);
+            this.lstJobs.SelectedIndexChanged += new System.EventHandler(this.lstJobs_SelectedIndexChanged);
+            this.lstJobs.DoubleClick += new System.EventHandler(this.btnReprint_Click);
             // Right column
             this.pnlRight.ColumnCount = 1;
             this.pnlRight.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
@@ -376,8 +390,8 @@ namespace QuickfloraPrinting
             this.lstPrinters.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.lstPrinters.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
                 this.colPrinterName, this.colPrinterState});
-            this.colPrinterName.Width = 190;
-            this.colPrinterState.Width = 120;
+            this.colPrinterName.Width = 170;
+            this.colPrinterState.Width = 140;
             this.lstPrinters.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lstPrinters.Font = fBody;
             this.lstPrinters.ForeColor = ink;
@@ -506,6 +520,7 @@ namespace QuickfloraPrinting
         private System.Windows.Forms.ToolStripMenuItem autoStartToolStripMenuItem;
         private System.Windows.Forms.Timer timer1;
         private System.Windows.Forms.Timer timerHealth;
+        private System.Windows.Forms.Timer timerConfirm;
 
         private System.Windows.Forms.Panel pnlHeader;
         private System.Windows.Forms.PictureBox pictureBox1;
@@ -520,6 +535,7 @@ namespace QuickfloraPrinting
         private System.Windows.Forms.Button btnSettings;
         private System.Windows.Forms.Button btnCopyDiag;
         private System.Windows.Forms.Button btnTestDrawer;
+        private System.Windows.Forms.Button btnReprint;
 
         private System.Windows.Forms.Panel pnlBody;
         private QuickfloraPrinting.CardPanel pnlStatus;
