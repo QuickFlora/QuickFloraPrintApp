@@ -26,7 +26,7 @@
 ; ============================================================================
 
 #define AppName        "QuickFlora Print"
-#define AppVersion     "5.0.2"
+#define AppVersion     "5.0.3"
 #define AppPublisher   "Sunflower Technologies"
 #define AppURL         "https://quickflora.com"
 #define ExeName        "QuickfloraPrinting.exe"

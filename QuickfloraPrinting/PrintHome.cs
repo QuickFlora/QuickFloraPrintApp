@@ -481,11 +481,14 @@ namespace QuickfloraPrinting
             QFPrintService.QFPrintService obj = new QFPrintService.QFPrintService();
             obj.Timeout = (LiveWaitSeconds + 20) * 1000;
             obj.WaitForPrintJobCompleted += new QFPrintService.WaitForPrintJobCompletedEventHandler(obj_WaitForPrintJobCompleted);
+            pendingRequest = obj; pendingSince = DateTime.Now;   // 5.0.3 watchdog
             obj.WaitForPrintJobAsync(Program.CompanyID, Program.DivisionID, Program.DepartmentID, Program.TerminalName, LiveWaitSeconds);
         }
 
         void obj_WaitForPrintJobCompleted(object sender, QFPrintService.WaitForPrintJobCompletedEventArgs e)
         {
+            if (sender != pendingRequest) return;   // 5.0.3: a request the watchdog already gave up on
+            pendingRequest = null;
             bool hasWork = false;
             try
             {
@@ -546,6 +549,7 @@ namespace QuickfloraPrinting
             pingStarted = DateTime.Now;
             QFPrintService.QFPrintService obj = new QFPrintService.QFPrintService();
             obj.PingPOSForPrintingCompleted += new QFPrintService.PingPOSForPrintingCompletedEventHandler(obj_PingPOSForPrintingCompleted);
+            pendingRequest = obj; pendingSince = DateTime.Now;   // 5.0.3 watchdog
             obj.PingPOSForPrintingAsync(Program.CompanyID, Program.DivisionID, Program.DepartmentID, Program.TerminalName );
             timer1.Enabled = false;
          
@@ -554,6 +558,8 @@ namespace QuickfloraPrinting
 
         void obj_PingPOSForPrintingCompleted(object sender, QFPrintService.PingPOSForPrintingCompletedEventArgs e)
         {
+            if (sender != pendingRequest) return;   // 5.0.3: a request the watchdog already gave up on
+            pendingRequest = null;
             string chk = "";
             bool reached = false;
 
@@ -1808,7 +1814,37 @@ namespace QuickfloraPrinting
 
         private void timerHealth_Tick(object sender, EventArgs e)
         {
+            RestartStuckPickup();
             RefreshHealthAsync();
+        }
+
+        // 5.0.3: the pickup request (live wait or 5-second ping) that has not answered yet, and since when.
+        private QFPrintService.QFPrintService pendingRequest;
+        private DateTime pendingSince;
+
+        /// <summary>
+        /// 5.0.3: asynchronous web requests ignore their Timeout, so a request the network drops without an
+        /// error never completes and the app silently stops picking up orders (Berkeley BFS-HP-11, 8-9 Oct
+        /// 2026: open and "fine" for 6.5 hours, no orders taken). Any request with no answer after 90 s is
+        /// cancelled and pickup starts again. Runs on the 30-second health timer.
+        /// </summary>
+        private void RestartStuckPickup()
+        {
+            try
+            {
+                if (pendingRequest == null || (DateTime.Now - pendingSince).TotalSeconds < 90) return;
+                QFPrintService.QFPrintService stuck = pendingRequest;
+                pendingRequest = null;   // its late answer, if any, is now ignored
+                WriteToFile("PICKUP: no answer from QuickFlora for " + (DateTime.Now - pendingSince).TotalSeconds.ToString("0") + " s - asking again");
+                ReportEvent("Pickup restarted", "", "pc=" + Environment.MachineName + " | mode=" + (useLivePickup ? "live" : "poll")
+                    + " | waited=" + (DateTime.Now - pendingSince).TotalSeconds.ToString("0") + "s");
+                try { stuck.Abort(); } catch { }
+                NoteConnection(false);
+                ShowCurrentStatus();
+                timer1.Interval = 1000;
+                timer1.Enabled = true;   // timer1_Tick starts a fresh live wait or ping
+            }
+            catch { }
         }
 
         private class HealthInfo
