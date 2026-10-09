@@ -60,6 +60,9 @@
   <ItemGroup>
     <Compile Include="clsPrinting.cs" />
     <Compile Include="clsQFPrinting.cs" />
+    <Compile Include="DrawerOpenDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="PdfPrinter.cs" />
     <Compile Include="PrintMonitor.cs" />
     <Compile Include="HtmlPrinter.cs" />

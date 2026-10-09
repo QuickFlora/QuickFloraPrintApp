@@ -1137,10 +1137,21 @@ namespace QuickfloraPrinting
                 return;
             }
 
+            // AB#3399: who is opening it and why, recorded with the time (local log + server audit).
+            string employee, reason;
+            using (DrawerOpenDialog d = new DrawerOpenDialog())
+            {
+                if (d.ShowDialog(this) != DialogResult.OK) return;
+                employee = d.EmployeeID; reason = d.Reason;
+            }
+
             try
             {
                 // 0x07 = BEL = the drawer-kick byte on Star printers.
                 bool ok = QuickFloraEMV.RawPrinterHelper.SendStringToPrinter(printer, "\u0007");
+                WriteToFile("CASH DRAWER opened by employee=" + employee + " reason=" + reason + " printer=" + printer + " sent=" + (ok ? "yes" : "NO"));
+                ReportEvent("Cash drawer opened", "", "employee=" + employee + " | reason=" + reason + " | pc=" + Environment.MachineName
+                    + " | printer=" + printer + " | sent=" + (ok ? "yes" : "no"));
                 if (ok)
                 {
                     SetStatus("Cash drawer test sent", "Sent the open command to " + printer, false);
