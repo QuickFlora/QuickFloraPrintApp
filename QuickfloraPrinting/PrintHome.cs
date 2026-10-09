@@ -493,9 +493,12 @@ namespace QuickfloraPrinting
             }
             catch (Exception ex)
             {
-                string msg = ex.ToString();
                 // Server without the method (old web service): SOAP "did not recognize ... SOAPAction"
                 // or "Unable to handle request without a valid action". Fall back for this session.
+                // 5.0.1: look only at the server's own error message. ex.ToString() includes our stack
+                // trace, which always contains "WaitForPrintJob", so any network hiccup switched live
+                // pickup off until restart (Lenovo, 8 Oct 2026 20:36).
+                string msg = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
                 if (msg.IndexOf("WaitForPrintJob", StringComparison.OrdinalIgnoreCase) >= 0
                     || msg.IndexOf("SOAPAction", StringComparison.OrdinalIgnoreCase) >= 0
                     || msg.IndexOf("valid action", StringComparison.OrdinalIgnoreCase) >= 0)
