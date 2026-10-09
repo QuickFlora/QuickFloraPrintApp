@@ -653,6 +653,7 @@ namespace QuickfloraPrinting
                 PrintText2 = objDataTable.Rows[0]["PrintText2"].ToString();
                 FileName = objDataTable.Rows[0]["FileName"].ToString();
                 slno = Convert.ToInt32(objDataTable.Rows[0]["slno"].ToString());
+                PrintText2 = InstalledPrinterFor(PrintText2, slno);   // 5.0.4
                 // AB#3163: when the job reached this PC, and how (live pickup or 5-second check).
                 WriteToFile("PICKUP slno=" + slno + " file=" + FileName + " via " + (useLivePickup ? "live" : "poll"));
 
@@ -2232,6 +2233,41 @@ namespace QuickfloraPrinting
         }
 
         private DateTime lastStatusReport = DateTime.MinValue;
+
+        private readonly Dictionary<string, string> reportedPrinterNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// 5.0.4: the printer QuickFlora names for a job may not exist on this PC under that exact name
+        /// (Berkeley BFS-HP-1, 9 Oct 2026: QuickFlora said "Brother HL-L6210DW series", Windows had
+        /// "Brother HL-L6210DW series Printer"). Edge and Adobe then print on the Windows default printer,
+        /// but the app watched the named (missing) printer, saw nothing, treated the HTML ticket as failed,
+        /// printed the PDF as well - two tickets per order - and reported both as not printed.
+        /// Returns the installed printer the job will really go to: the exact name, else the same printer
+        /// under a longer or shorter Windows name, else the Windows default printer.
+        /// </summary>
+        private string InstalledPrinterFor(string wanted, int slno)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(wanted)) return wanted;
+                List<string> names = new List<string>();
+                foreach (string n in PrinterSettings.InstalledPrinters) names.Add(n);
+                foreach (string n in names)
+                    if (n.Equals(wanted, StringComparison.OrdinalIgnoreCase)) return n;
+                string use = null;
+                foreach (string n in names)
+                    if (n.StartsWith(wanted, StringComparison.OrdinalIgnoreCase) || wanted.StartsWith(n, StringComparison.OrdinalIgnoreCase)) { use = n; break; }
+                if (use == null) use = new PrinterSettings().PrinterName;   // where Edge and Adobe print anyway
+                WriteToFile("PRINTER '" + wanted + "' is not installed on this PC - using '" + use + "' (slno=" + slno + ")");
+                if (!reportedPrinterNames.ContainsKey(wanted))
+                {
+                    reportedPrinterNames[wanted] = use;
+                    ReportEvent("Printer name not found", "", "pc=" + Environment.MachineName + " | asked=" + wanted + " | used=" + use + " | slno=" + slno);
+                }
+                return use;
+            }
+            catch { return wanted; }
+        }
 
         // ==================== V5 (AB#3384, AB#3385) ====================
 
