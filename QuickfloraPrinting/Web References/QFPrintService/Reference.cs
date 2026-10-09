@@ -176,6 +176,18 @@ namespace QuickfloraPrinting.QFPrintService {
         }
         
         /// <remarks/>
+        // AB#3399 (5.0.2): added by hand, matches HasOpenShift on QFPrintService.asmx.
+        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("https://secure.quickflora.com/HasOpenShift", RequestNamespace="https://secure.quickflora.com/", ResponseNamespace="https://secure.quickflora.com/", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
+        public bool HasOpenShift(string CompanyID, string DivisionID, string DepartmentID, string TerminalName) {
+            object[] results = this.Invoke("HasOpenShift", new object[] {
+                        CompanyID,
+                        DivisionID,
+                        DepartmentID,
+                        TerminalName});
+            return ((bool)(results[0]));
+        }
+        
+        /// <remarks/>
         [System.Web.Services.Protocols.SoapDocumentMethodAttribute("https://secure.quickflora.com/PingPOSForPrinting", RequestNamespace="https://secure.quickflora.com/", ResponseNamespace="https://secure.quickflora.com/", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
         public bool PingPOSForPrinting(string CompanyID, string DivisionID, string DepartmentID, string TerminalName) {
             object[] results = this.Invoke("PingPOSForPrinting", new object[] {

@@ -260,6 +260,7 @@ namespace QuickfloraPrinting
             this.btnReprint.Click += new System.EventHandler(this.btnReprint_Click);
             StyleSecondary(this.btnTestDrawer, "Open cash drawer", line, ink);
             this.btnTestDrawer.Name = "btnTestDrawer";
+            this.btnTestDrawer.Visible = false;   // AB#3399: shown only while a POS shift is open on this PC
             this.btnTestDrawer.Click += new System.EventHandler(this.btnTestDrawer_Click);
             StyleSecondary(this.btnCopyDiag, "Copy details for support", line, ink);
             this.btnCopyDiag.Name = "btnCopyDiag";

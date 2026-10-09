@@ -1810,6 +1810,7 @@ namespace QuickfloraPrinting
             public string Ip = "";
             public string Rmm = "";
             public List<string> OtherCopies = new List<string>();   // AB#3384: other print-app copies running
+            public bool? ShiftOpen;                                  // AB#3399: null = could not ask the server
         }
 
         /// <summary>WMI and DNS can take a second or two on a busy PC, so they run off the UI thread.</summary>
@@ -1897,6 +1898,7 @@ namespace QuickfloraPrinting
 
             h.Rmm = RmmState();
             h.OtherCopies = OtherCopies();
+            h.ShiftOpen = ShiftOpenHere();
             return h;
         }
 
@@ -2145,6 +2147,9 @@ namespace QuickfloraPrinting
                 problemPrinter = h.ProblemPrinter;
                 problemWaiting = h.ProblemWaiting;
                 AlertPrinterProblem(h);
+                // AB#3399: the drawer button only while a POS shift is open on this PC. If the server
+                // could not be asked, keep what it was (hidden until the first answer).
+                if (h.ShiftOpen.HasValue && btnTestDrawer.Visible != h.ShiftOpen.Value) btnTestDrawer.Visible = h.ShiftOpen.Value;
                 otherCopies = h.OtherCopies;
                 string copies = string.Join("; ", h.OtherCopies.ToArray());
                 if (copies != reportedCopies)
@@ -2189,6 +2194,22 @@ namespace QuickfloraPrinting
         private string reportedProblemPrinter;
         private DateTime problemSince;
         private DateTime lastProblemBalloon = DateTime.MinValue;
+
+        /// <summary>
+        /// AB#3399: is a POS shift open on this terminal? Most shops only use the phone order form and
+        /// never open a shift, so the "Open cash drawer" button is shown only while one is open.
+        /// Null when the server cannot be asked (offline, or a print service without HasOpenShift).
+        /// </summary>
+        private static bool? ShiftOpenHere()
+        {
+            try
+            {
+                QFPrintService.QFPrintService svc = new QFPrintService.QFPrintService();
+                svc.Timeout = 10000;
+                return svc.HasOpenShift(Program.CompanyID, Program.DivisionID, Program.DepartmentID, Program.TerminalName);
+            }
+            catch { return null; }
+        }
 
         /// <summary>
         /// AB#3385: tell people the moment a printer orders go to stops printing. Before V5 the red
