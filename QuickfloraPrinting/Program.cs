@@ -108,10 +108,12 @@ namespace QuickfloraPrinting
 
                     Application.EnableVisualStyles();
                     Application.SetCompatibleTextRenderingDefault(false);
+                    WarmEdge.Shutdown();   // 5.0.5: close any warm Edge left over from a previous run
                     Application.Run(new PrintHome(startMinimized));
                 }
                 finally
                 {
+                    WarmEdge.Shutdown();
                     if (machine != null) { try { machine.ReleaseMutex(); } catch { } machine.Close(); }
                 }
             }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Management;
@@ -94,6 +94,18 @@ namespace QuickfloraPrinting
                 return false;
             }
 
+            // 5.0.5 (AB#3471): hand the ticket to this printer's warm Edge. Starting a new Edge
+            // (below) is only the fallback when the warm one cannot be reached.
+            string warmDetail;
+            if (WarmEdge.Navigate(printer, new Uri(printFile).AbsoluteUri, out warmDetail))
+            {
+                bool got = WaitForJob(printer, docTitle, started, 15);
+                CleanOldPrintFiles(Path.GetDirectoryName(htmlPath));
+                detail = (got ? " html=warm edge spooled " + (DateTime.Now - started).TotalSeconds.ToString("0.0") + "s"
+                              : " html=warm edge NO JOB after 15s") + warmDetail;
+                return got;
+            }
+
             try
             {
                 if (!Directory.Exists(ProfileDir)) Directory.CreateDirectory(ProfileDir);
@@ -132,6 +144,55 @@ namespace QuickfloraPrinting
                 ? " html=edge spooled " + (DateTime.Now - started).TotalSeconds.ToString("0.0") + "s"
                 : " html=edge NO JOB after 25s";
             return seen;
+        }
+
+        /// <summary>
+        /// 5.0.5 (AB#3472): PDFs (invoices, cards) print through the printer's warm Edge too; Adobe
+        /// Reader is no longer used. Edge opens the PDF in its viewer and prints it silently.
+        /// False if the job never reached the Windows queue.
+        /// </summary>
+        public static bool PrintPdf(string pdfPath, string printer, out string detail)
+        {
+            DateTime started = DateTime.Now;
+            string docName = Path.GetFileName(pdfPath);
+            string d1, d2;
+            if (!WarmEdge.Navigate(printer, new Uri(pdfPath).AbsoluteUri, out d1)) { detail = " pdf=edge not reachable" + d1; return false; }
+            // The viewer needs a moment to load the file before it can print it.
+            Thread.Sleep(700);
+            if (!WarmEdge.Evaluate(printer, "window.print()", out d2)) { detail = " pdf=edge print failed" + d1 + d2; return false; }
+            bool got = WaitForJob(printer, docName, started, 15);
+            detail = (got ? " pdf=edge spooled " + (DateTime.Now - started).TotalSeconds.ToString("0.0") + "s"
+                          : " pdf=edge NO JOB after 15s") + d1 + d2;
+            return got;
+        }
+
+        /// <summary>Waits until Windows has the job (checked every 50 ms), then until it has finished spooling.</summary>
+        private static bool WaitForJob(string printer, string docTitle, DateTime started, int seconds)
+        {
+            int mask;
+            while ((DateTime.Now - started).TotalSeconds < seconds)
+            {
+                if (JobInQueue(printer, docTitle, started, out mask) || SeenByWatcher(printer, docTitle))
+                {
+                    DateTime spoolStart = DateTime.Now;   // JOB_STATUS_SPOOLING = 8
+                    while ((DateTime.Now - spoolStart).TotalSeconds < 10 && JobInQueue(printer, docTitle, started, out mask) && (mask & 8) != 0)
+                        Thread.Sleep(50);
+                    return true;
+                }
+                Thread.Sleep(50);
+            }
+            return false;
+        }
+
+        /// <summary>The warm Edge keeps the last ticket open, so print copies are removed once they are a few minutes old.</summary>
+        private static void CleanOldPrintFiles(string folder)
+        {
+            try
+            {
+                foreach (string f in Directory.GetFiles(folder, "*.print.html"))
+                    if ((DateTime.Now - File.GetLastWriteTime(f)).TotalMinutes > 10) File.Delete(f);
+            }
+            catch { }
         }
 
         private static bool SeenByWatcher(string printer, string docTitle)

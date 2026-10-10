@@ -26,7 +26,7 @@
 ; ============================================================================
 
 #define AppName        "QuickFlora Print"
-#define AppVersion     "5.0.4"
+#define AppVersion     "5.0.5"
 #define AppPublisher   "Sunflower Technologies"
 #define AppURL         "https://quickflora.com"
 #define ExeName        "QuickfloraPrinting.exe"
@@ -120,15 +120,14 @@ Type: files; Name: "{app}\printlog.txt"
 const
   DotNetKey = 'SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full';
 
-{ The app targets .NET Framework 4.0. Windows 10 and 11 ship with 4.8, which
-  runs 4.0 apps, so this check almost never fires - but on an old Windows 7
-  till it is the difference between a clear message and a crash on launch. }
+{ 5.0.5: the app targets .NET Framework 4.8 (the warm-Edge connection needs it).
+  Windows 10 (1903 and later) and Windows 11 ship with 4.8; Windows 7 is not
+  supported. 528040 is the lowest Release value for 4.8. }
 function IsDotNet4Present: Boolean;
 var
   Release: Cardinal;
 begin
-  Result := RegQueryDWordValue(HKLM, DotNetKey, 'Release', Release) or
-            RegKeyExists(HKLM, 'SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Client');
+  Result := RegQueryDWordValue(HKLM, DotNetKey, 'Release', Release) and (Release >= 528040);
 end;
 
 function InitializeSetup: Boolean;
@@ -136,9 +135,9 @@ begin
   Result := True;
   if not IsDotNet4Present then
   begin
-    if MsgBox('QuickFlora Print needs Microsoft .NET Framework 4 and it was not found ' +
+    if MsgBox('QuickFlora Print needs Microsoft .NET Framework 4.8 and it was not found ' +
               'on this PC.' + #13#10#13#10 +
-              'Install .NET Framework 4 first, then run this again.' + #13#10#13#10 +
+              'Install .NET Framework 4.8 first, then run this again.' + #13#10#13#10 +
               'Continue anyway?', mbConfirmation, MB_YESNO) = IDNO then
       Result := False;
   end;

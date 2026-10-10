@@ -735,18 +735,17 @@ namespace QuickfloraPrinting
                     string pdfDetail = InspectPrintFile("C:\\QFPrintApp\\PDF\\" + filename, out pdfDrawer, out pdfSize);
                     bool pdfSent = true;
                     SpoolWatch.Start(PrintText2, filename, DateTime.Now);   // AB#3164: watch before Adobe spools it
+                    // 5.0.5 (AB#3472): PDFs print through Edge; Adobe Reader is no longer used.
                     try
                     {
-                        Pdf.PrintPDFs("C:\\QFPrintApp\\PDF\\" + filename, txtadobe.Text, PrintText2);
+                        string pdfEdge;
+                        pdfSent = HtmlPrinter.PrintPdf("C:\\QFPrintApp\\PDF\\" + filename, PrintText2, out pdfEdge);
+                        pdfDetail += pdfEdge;
                     }
                     catch (Exception ex)
                     {
                         pdfSent = false;
                         ReportError("obj_CheckPOSForPrintingCompleted", filename, ex);
-                        var str = "";
-                        str = ex.Message;
-                      //  MessageBox.Show(str);
-
                     }
                     LogPrintJob(PrintText, filename, slno, PrintText2, pdfDetail, pdfDrawer, pdfSize, pdfSent);
                     sentJob = AddJob(PrintText, filename, PrintText2, pdfSent, (DateTime.Now - jobStarted).TotalSeconds);
