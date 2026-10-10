@@ -29,7 +29,7 @@ namespace QuickfloraPrinting
         private class Instance
         {
             public string Printer;
-            public Process Proc;
+            public string Profile;
             public ClientWebSocket Socket;
             public int NextId;
         }
@@ -87,7 +87,8 @@ namespace QuickfloraPrinting
             if (Instances.TryGetValue(printer, out inst))
             {
                 bool alive = false;
-                try { alive = !inst.Proc.HasExited && inst.Socket.State == WebSocketState.Open; } catch { }
+                // Only the connection tells: the msedge.exe we start hands off to another process and exits.
+                try { alive = inst.Socket.State == WebSocketState.Open; } catch { }
                 if (alive) return inst;
                 Drop(printer);
             }
@@ -104,12 +105,12 @@ namespace QuickfloraPrinting
 
             int port = FreePort();
             ProcessStartInfo psi = new ProcessStartInfo(edge,
-                "--kiosk-printing --no-first-run --no-default-browser-check --disable-sync" +
+                "--kiosk-printing --no-first-run --no-default-browser-check --disable-sync --disable-extensions" +
                 " --remote-debugging-address=127.0.0.1 --remote-debugging-port=" + port +
                 " --window-position=-2000,-2000 --user-data-dir=\"" + profile + "\" --app=about:blank");
             psi.UseShellExecute = false;
             psi.CreateNoWindow = true;
-            Process proc = Process.Start(psi);
+            Process.Start(psi);
 
             string wsUrl = null;
             DateTime until = DateTime.Now.AddSeconds(15);
@@ -120,20 +121,25 @@ namespace QuickfloraPrinting
                     using (WebClient wc = new WebClient())
                     {
                         string list = wc.DownloadString("http://127.0.0.1:" + port + "/json");
-                        Match m = Regex.Match(list, "\"webSocketDebuggerUrl\"\\s*:\\s*\"(ws://[^\"]+/devtools/page/[^\"]+)\"");
-                        if (m.Success) wsUrl = m.Groups[1].Value;
+                        // Edge also lists extension background pages and workers; only a browser tab can print.
+                        foreach (Match t in Regex.Matches(list, "\\{[^{}]*\\}"))
+                        {
+                            if (!Regex.IsMatch(t.Value, "\"type\"\\s*:\\s*\"page\"")) continue;
+                            Match m = Regex.Match(t.Value, "\"webSocketDebuggerUrl\"\\s*:\\s*\"(ws://[^\"]+)\"");
+                            if (m.Success) { wsUrl = m.Groups[1].Value; break; }
+                        }
                     }
                 }
                 catch { }
                 if (wsUrl == null) Thread.Sleep(150);
             }
-            if (wsUrl == null) { detail += " warm-edge did not start"; try { proc.Kill(); } catch { } return null; }
+            if (wsUrl == null) { detail += " warm-edge did not start"; KillEdgesUsing(profile); return null; }
 
             ClientWebSocket ws = new ClientWebSocket();
-            if (!ws.ConnectAsync(new Uri(wsUrl), CancellationToken.None).Wait(5000)) { detail += " warm-edge connect timeout"; try { proc.Kill(); } catch { } return null; }
+            if (!ws.ConnectAsync(new Uri(wsUrl), CancellationToken.None).Wait(5000)) { detail += " warm-edge connect timeout"; KillEdgesUsing(profile); return null; }
 
             inst = new Instance();
-            inst.Printer = printer; inst.Proc = proc; inst.Socket = ws;
+            inst.Printer = printer; inst.Profile = profile; inst.Socket = ws;
             Instances[printer] = inst;
             StartDraining(ws);
             detail += " warm-edge started";
@@ -163,7 +169,7 @@ namespace QuickfloraPrinting
             if (!Instances.TryGetValue(printer, out inst)) return;
             Instances.Remove(printer);
             try { inst.Socket.Abort(); } catch { }
-            try { if (!inst.Proc.HasExited) inst.Proc.Kill(); } catch { }
+            KillEdgesUsing(inst.Profile);
         }
 
         /// <summary>Closes every warm Edge (app exit) and any left over from a previous run.</summary>
