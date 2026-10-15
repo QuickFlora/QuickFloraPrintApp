@@ -38,6 +38,8 @@ namespace QuickfloraPrinting.QFPrintService {
         
         private System.Threading.SendOrPostCallback WaitForPrintJobOperationCompleted;
         
+        private System.Threading.SendOrPostCallback WaitForPrintJobOrWarmOperationCompleted;
+        
         private System.Threading.SendOrPostCallback CheckPOSForPrintingOperationCompleted;
         
         private System.Threading.SendOrPostCallback UpdateReadPOSForPrintingOperationCompleted;
@@ -93,6 +95,9 @@ namespace QuickfloraPrinting.QFPrintService {
         
         /// <remarks/>
         public event WaitForPrintJobCompletedEventHandler WaitForPrintJobCompleted;
+        
+        /// <remarks/>
+        public event WaitForPrintJobOrWarmCompletedEventHandler WaitForPrintJobOrWarmCompleted;
         
         /// <remarks/>
         public event CheckPOSForPrintingCompletedEventHandler CheckPOSForPrintingCompleted;
@@ -258,6 +263,46 @@ namespace QuickfloraPrinting.QFPrintService {
             if ((this.WaitForPrintJobCompleted != null)) {
                 System.Web.Services.Protocols.InvokeCompletedEventArgs invokeArgs = ((System.Web.Services.Protocols.InvokeCompletedEventArgs)(arg));
                 this.WaitForPrintJobCompleted(this, new WaitForPrintJobCompletedEventArgs(invokeArgs.Results, invokeArgs.Error, invokeArgs.Cancelled, invokeArgs.UserState));
+            }
+        }
+        
+        // AB#3796 (V7-9, 5.0.8): added by hand to match the generated style. Server side:
+        // NewPOSQFPrintWS/App_Code/QFPrintService.vb (BeginWaitForPrintJobOrWarm/EndWaitForPrintJobOrWarm).
+        // Answers: 0 = nothing yet, 1 = work to print, 2 = warm up (an order was started on this terminal).
+        /// <remarks/>
+        [System.Web.Services.Protocols.SoapDocumentMethodAttribute("https://secure.quickflora.com/WaitForPrintJobOrWarm", RequestNamespace="https://secure.quickflora.com/", ResponseNamespace="https://secure.quickflora.com/", Use=System.Web.Services.Description.SoapBindingUse.Literal, ParameterStyle=System.Web.Services.Protocols.SoapParameterStyle.Wrapped)]
+        public int WaitForPrintJobOrWarm(string CompanyID, string DivisionID, string DepartmentID, string TerminalName, int MaxWaitSeconds) {
+            object[] results = this.Invoke("WaitForPrintJobOrWarm", new object[] {
+                        CompanyID,
+                        DivisionID,
+                        DepartmentID,
+                        TerminalName,
+                        MaxWaitSeconds});
+            return ((int)(results[0]));
+        }
+        
+        /// <remarks/>
+        public void WaitForPrintJobOrWarmAsync(string CompanyID, string DivisionID, string DepartmentID, string TerminalName, int MaxWaitSeconds) {
+            this.WaitForPrintJobOrWarmAsync(CompanyID, DivisionID, DepartmentID, TerminalName, MaxWaitSeconds, null);
+        }
+        
+        /// <remarks/>
+        public void WaitForPrintJobOrWarmAsync(string CompanyID, string DivisionID, string DepartmentID, string TerminalName, int MaxWaitSeconds, object userState) {
+            if ((this.WaitForPrintJobOrWarmOperationCompleted == null)) {
+                this.WaitForPrintJobOrWarmOperationCompleted = new System.Threading.SendOrPostCallback(this.OnWaitForPrintJobOrWarmOperationCompleted);
+            }
+            this.InvokeAsync("WaitForPrintJobOrWarm", new object[] {
+                        CompanyID,
+                        DivisionID,
+                        DepartmentID,
+                        TerminalName,
+                        MaxWaitSeconds}, this.WaitForPrintJobOrWarmOperationCompleted, userState);
+        }
+        
+        private void OnWaitForPrintJobOrWarmOperationCompleted(object arg) {
+            if ((this.WaitForPrintJobOrWarmCompleted != null)) {
+                System.Web.Services.Protocols.InvokeCompletedEventArgs invokeArgs = ((System.Web.Services.Protocols.InvokeCompletedEventArgs)(arg));
+                this.WaitForPrintJobOrWarmCompleted(this, new WaitForPrintJobOrWarmCompletedEventArgs(invokeArgs.Results, invokeArgs.Error, invokeArgs.Cancelled, invokeArgs.UserState));
             }
         }
         
@@ -440,6 +485,30 @@ namespace QuickfloraPrinting.QFPrintService {
     /// <remarks/>
     [System.CodeDom.Compiler.GeneratedCodeAttribute("System.Web.Services", "4.8.3752.0")]
     public delegate void WaitForPrintJobCompletedEventHandler(object sender, WaitForPrintJobCompletedEventArgs e);
+    
+    /// <remarks/>
+    public delegate void WaitForPrintJobOrWarmCompletedEventHandler(object sender, WaitForPrintJobOrWarmCompletedEventArgs e);
+    
+    /// <remarks/>
+    [System.Diagnostics.DebuggerStepThroughAttribute()]
+    [System.ComponentModel.DesignerCategoryAttribute("code")]
+    public partial class WaitForPrintJobOrWarmCompletedEventArgs : System.ComponentModel.AsyncCompletedEventArgs {
+        
+        private object[] results;
+        
+        internal WaitForPrintJobOrWarmCompletedEventArgs(object[] results, System.Exception exception, bool cancelled, object userState) : 
+                base(exception, cancelled, userState) {
+            this.results = results;
+        }
+        
+        /// <remarks/>
+        public int Result {
+            get {
+                this.RaiseExceptionIfNecessary();
+                return ((int)(this.results[0]));
+            }
+        }
+    }
     
     /// <remarks/>
     [System.CodeDom.Compiler.GeneratedCodeAttribute("System.Web.Services", "4.8.3752.0")]

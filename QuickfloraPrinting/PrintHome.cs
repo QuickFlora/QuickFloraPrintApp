@@ -474,12 +474,24 @@ namespace QuickfloraPrinting
         private int emptyYesCount;          // "yes" from the wait but the ping found nothing
         private const int LiveWaitSeconds = 25;
 
+        // AB#3796 (V7-9, 5.0.8): ask with WaitForPrintJobOrWarm, which can also answer "warm up"
+        // (someone started an order on this terminal in Phone Order). Falls back to WaitForPrintJob
+        // for the rest of the session on a server without it.
+        private bool useWarmWait = true;
+
         private void StartLiveWait()
         {
             timer1.Enabled = false;
             pingStarted = DateTime.Now;
             QFPrintService.QFPrintService obj = new QFPrintService.QFPrintService();
             obj.Timeout = (LiveWaitSeconds + 20) * 1000;
+            if (useWarmWait)
+            {
+                obj.WaitForPrintJobOrWarmCompleted += new QFPrintService.WaitForPrintJobOrWarmCompletedEventHandler(obj_WaitForPrintJobOrWarmCompleted);
+                pendingRequest = obj; pendingSince = DateTime.Now;   // 5.0.3 watchdog
+                obj.WaitForPrintJobOrWarmAsync(Program.CompanyID, Program.DivisionID, Program.DepartmentID, Program.TerminalName, LiveWaitSeconds);
+                return;
+            }
             obj.WaitForPrintJobCompleted += new QFPrintService.WaitForPrintJobCompletedEventHandler(obj_WaitForPrintJobCompleted);
             pendingRequest = obj; pendingSince = DateTime.Now;   // 5.0.3 watchdog
             obj.WaitForPrintJobAsync(Program.CompanyID, Program.DivisionID, Program.DepartmentID, Program.TerminalName, LiveWaitSeconds);
@@ -534,6 +546,51 @@ namespace QuickfloraPrinting
                 ShowCurrentStatus();
                 StartLiveWait();       // nothing yet: ask again straight away
             }
+        }
+
+        void obj_WaitForPrintJobOrWarmCompleted(object sender, QFPrintService.WaitForPrintJobOrWarmCompletedEventArgs e)
+        {
+            if (sender != pendingRequest) return;   // 5.0.3: a request the watchdog already gave up on
+            pendingRequest = null;
+            int answer = 0;
+            try
+            {
+                answer = e.Result;
+            }
+            catch (Exception ex)
+            {
+                // Same test as obj_WaitForPrintJobCompleted: only the server's own message, never our stack trace.
+                string msg = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
+                if (msg.IndexOf("WaitForPrintJobOrWarm", StringComparison.OrdinalIgnoreCase) >= 0
+                    || msg.IndexOf("SOAPAction", StringComparison.OrdinalIgnoreCase) >= 0
+                    || msg.IndexOf("valid action", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    useWarmWait = false;
+                    WriteToFile("WARM-UP not available on this server - live pickup without warm-ups: " + ex.Message);
+                    StartLiveWait();
+                    return;
+                }
+                ReportError("obj_WaitForPrintJobOrWarmCompleted", "", ex);
+                NoteConnection(false);
+                ShowCurrentStatus();
+                timer1.Interval = 5000;   // network trouble: retry in 5 s, not in a tight loop
+                timer1.Enabled = true;
+                return;
+            }
+
+            NoteConnection(true);
+            lblConn.Text = "\u25CF  Connected \u00B7 live";
+            lbltimer.Text = DateTime.Now.ToLongTimeString();
+            if (answer == 1)
+            {
+                lastWaitSaidYes = true;
+                PingNow();             // the normal flow: server creates the jobs, app prints them
+                return;
+            }
+            lastWaitSaidYes = false;
+            if (answer == 2) StartWarmUp();
+            ShowCurrentStatus();
+            StartLiveWait();
         }
 
         private void timer1_Tick(object sender, EventArgs e)
@@ -632,56 +689,273 @@ namespace QuickfloraPrinting
             catch (Exception ex)
             {
                 ReportError("obj_CheckPOSForPrintingCompleted", "", ex);
-                //   label1.Text += " Wait...";
-                // return;
             }
 
-         
-            string PrintText = "";
-            string PrintText1 = "";
-            string PrintText2 = "";
-            string FileName = "";
-            int slno = 0;
-            DateTime jobStarted = DateTime.Now;   // AB#3189: for the "Took" column
+            // AB#3795 (V7-8, 5.0.7): this handler only takes the job off the server and hands it to
+            // its printer's own queue, then goes straight back for the next one. Until 5.0.6 it also
+            // downloaded and spooled the job here, so a card waited behind its work ticket even when
+            // they go to different printers (Carmel Quickflora8-PC cards waited a median 15.9 s on
+            // 14 Oct 2026). Jobs for the same printer still print one at a time, in order.
+            PrintTask t = new PrintTask();
+            t.Started = DateTime.Now;
+            try
+            {
+                t.PrintText = objDataTable.Rows[0]["PrintText"].ToString();
+                t.PrintText1 = objDataTable.Rows[0]["PrintText1"].ToString();
+                t.PrintText2 = objDataTable.Rows[0]["PrintText2"].ToString();
+                t.FileName = objDataTable.Rows[0]["FileName"].ToString();
+                t.Slno = Convert.ToInt32(objDataTable.Rows[0]["slno"].ToString());
+                t.PrintText2 = InstalledPrinterFor(t.PrintText2, t.Slno);   // 5.0.4
+                t.DefaultPrinter = txtdefaultprinter.Text;
+            }
+            catch (Exception ex)
+            {
+                ReportError("obj_CheckPOSForPrintingCompleted", "", ex);
+                if (t.Slno > 0)
+                {
+                    WriteToFile("NOT PRINTED slno=" + t.Slno + " file=" + t.FileName + " - left open on the server");
+                    timer1.Enabled = true;
+                    return;
+                }
+                // Same as before 5.0.7 when nothing could be read: let the server move on.
+                QFPrintService.QFPrintService upd = new QFPrintService.QFPrintService();
+                upd.UpdatePOSForPrintingCompleted += new QFPrintService.UpdatePOSForPrintingCompletedEventHandler(obj_UpdatePOSForPrintingCompleted);
+                upd.UpdatePOSForPrintingAsync(Program.CompanyID, Program.DivisionID, Program.DepartmentID, t.Slno);
+                return;
+            }
+
+            PrinterWorker w = WorkerFor(t.PrintText2);
+            // AB#3163: when the job reached this PC, and how (live pickup or 5-second check).
+            // 5.0.7: queue = jobs already waiting for the same printer.
+            WriteToFile("PICKUP slno=" + t.Slno + " file=" + t.FileName + " via " + (useLivePickup ? "live" : "poll") + " queue=" + w.Pending);
+            w.Enqueue(t);
+            timer1.Enabled = true;   // ask for the next job now, while this one prints
+        }
+
+        // ==================== AB#3795 (V7-8): one print queue per printer ====================
+
+        internal class PrintTask
+        {
+            public string PrintText = "", PrintText1 = "", PrintText2 = "", FileName = "", DefaultPrinter = "";
+            public int Slno;
+            public DateTime Started;
+            public bool WarmUp;   // AB#3796: wake this printer's print path; never prints
+        }
+
+        /// <summary>One background thread per printer: its jobs print in order, other printers' jobs
+        /// print at the same time.</summary>
+        internal class PrinterWorker
+        {
+            private readonly PrintHome owner;
+            private readonly string printer;
+            private readonly Queue<PrintTask> queue = new Queue<PrintTask>();
+            private readonly object gate = new object();
+            private bool busy;
+            public DateTime LastWarm = DateTime.MinValue;
+
+            public PrinterWorker(PrintHome owner, string printer)
+            {
+                this.owner = owner; this.printer = printer;
+                System.Threading.Thread th = new System.Threading.Thread(Loop);
+                th.IsBackground = true;
+                th.Name = "QF printer " + printer;
+                // WScript.Network (SetDefaultSystemPrinter) is a COM object; give it an STA thread like the UI thread.
+                th.SetApartmentState(System.Threading.ApartmentState.STA);
+                th.Start();
+            }
+
+            /// <summary>Jobs waiting or printing on this printer.</summary>
+            public int Pending { get { lock (gate) { return queue.Count + (busy ? 1 : 0); } } }
+
+            public void Enqueue(PrintTask t)
+            {
+                lock (gate) { queue.Enqueue(t); System.Threading.Monitor.Pulse(gate); }
+            }
+
+            /// <summary>AB#3796: queue a warm-up only when the printer is idle (a real job warms it anyway).</summary>
+            public bool TryEnqueueWarm(PrintTask t)
+            {
+                lock (gate)
+                {
+                    if (busy || queue.Count > 0) return false;
+                    queue.Enqueue(t); System.Threading.Monitor.Pulse(gate);
+                    return true;
+                }
+            }
+
+            private void Loop()
+            {
+                while (true)
+                {
+                    PrintTask t;
+                    lock (gate)
+                    {
+                        while (queue.Count == 0) System.Threading.Monitor.Wait(gate);
+                        t = queue.Dequeue();
+                        busy = true;
+                    }
+                    try
+                    {
+                        if (t.WarmUp) owner.RunWarmUp(printer, t);
+                        else owner.RunPrintTask(t);
+                    }
+                    catch (Exception ex)
+                    {
+                        WriteToFile("ERROR [PrinterWorker " + printer + "] " + ex.ToString());
+                    }
+                    finally
+                    {
+                        lock (gate) { busy = false; }
+                    }
+                }
+            }
+        }
+
+        private readonly Dictionary<string, PrinterWorker> workers = new Dictionary<string, PrinterWorker>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>The worker for a printer, created on first use. UI thread only.</summary>
+        private PrinterWorker WorkerFor(string printer)
+        {
+            string key = printer ?? "";
+            PrinterWorker w;
+            if (!workers.TryGetValue(key, out w))
+            {
+                w = new PrinterWorker(this, key);
+                workers[key] = w;
+                RememberPrinter(key);
+            }
+            return w;
+        }
+
+        // ==================== AB#3796 (V7-9): warm up when an order starts ====================
+
+        // Printers this PC has printed to, kept across restarts so the first order of the day is warmed too.
+        private readonly Dictionary<string, bool> knownPrinters = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        private bool knownPrintersLoaded;
+
+        private static string KnownPrintersFile
+        {
+            get { return System.IO.Path.Combine(System.IO.Path.GetDirectoryName(Application.ExecutablePath), "WarmPrinters.txt"); }
+        }
+
+        private void LoadKnownPrinters()
+        {
+            if (knownPrintersLoaded) return;
+            knownPrintersLoaded = true;
+            try
+            {
+                if (System.IO.File.Exists(KnownPrintersFile))
+                    foreach (string l in System.IO.File.ReadAllLines(KnownPrintersFile))
+                        if (l.Trim().Length > 0) knownPrinters[l.Trim()] = true;
+            }
+            catch { }
+        }
+
+        private void RememberPrinter(string printer)
+        {
+            if (string.IsNullOrEmpty(printer)) return;
+            LoadKnownPrinters();
+            if (knownPrinters.ContainsKey(printer)) return;
+            knownPrinters[printer] = true;
+            try { System.IO.File.WriteAllLines(KnownPrintersFile, new List<string>(knownPrinters.Keys).ToArray()); } catch { }
+        }
+
+        /// <summary>The server said someone started an order on this terminal: wake every printer this PC
+        /// prints to. Printers that are busy are skipped (the job already wakes them). UI thread.</summary>
+        private void StartWarmUp()
+        {
+            try
+            {
+                LoadKnownPrinters();
+                string def = txtdefaultprinter.Text.Trim();
+                Dictionary<string, bool> all = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+                foreach (string p in knownPrinters.Keys) all[p] = true;
+                foreach (string p in workers.Keys) all[p] = true;
+                if (def.Length > 0) all[def] = true;
+                int queued = 0;
+                foreach (string p in all.Keys)
+                {
+                    if (p.Length == 0) continue;
+                    PrinterWorker w = WorkerFor(p);
+                    if ((DateTime.Now - w.LastWarm).TotalSeconds < 60) continue;
+                    PrintTask t = new PrintTask();
+                    t.WarmUp = true;
+                    t.Started = DateTime.Now;
+                    t.DefaultPrinter = def;
+                    if (w.TryEnqueueWarm(t)) { w.LastWarm = DateTime.Now; queued++; }
+                }
+                WriteToFile("WARM signal: an order was started on " + Program.TerminalName + " - waking " + queued + " of " + all.Count + " printer(s)");
+            }
+            catch (Exception ex)
+            {
+                WriteToFile("WARM signal failed: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 5.0.7: changing the Windows default printer is global, so only one worker may do it at a
+        /// time. It is needed only when a printer's warm Edge has not printed yet (Edge keeps the
+        /// printer it first printed to) or Edge has to be started fresh. A warm Edge that already
+        /// printed goes to its own printer whatever the default is, so those jobs never wait here.
+        /// </summary>
+        internal static readonly object DefaultPrinterLock = new object();
+
+        private void Ui(MethodInvoker m)
+        {
+            try { if (IsHandleCreated && !IsDisposed) BeginInvoke(m); } catch { }
+        }
+
+        private void UiReportError(string location, string order, Exception ex)
+        {
+            Ui(delegate { ReportError(location, order, ex); });
+        }
+
+        private JobRow UiAddJob(string type, string file, string printer, bool ok, double seconds)
+        {
+            JobRow r = null;
+            try
+            {
+                Invoke(new MethodInvoker(delegate { r = AddJob(type, file, printer, ok, seconds); }));
+            }
+            catch { }
+            return r;
+        }
+
+        /// <summary>Downloads and prints one job. Runs on its printer's worker thread.</summary>
+        internal void RunPrintTask(PrintTask t)
+        {
+            string PrintText = t.PrintText;
+            string PrintText1 = t.PrintText1;
+            string PrintText2 = t.PrintText2;
+            string FileName = t.FileName;
+            int slno = t.Slno;
+            DateTime jobStarted = t.Started;   // AB#3189: for the "Took" column (includes time queued)
             bool jobShown = false;
-            JobRow sentJob = null;                // AB#3164: the row to confirm once Windows prints it
+            JobRow sentJob = null;              // AB#3164: the row to confirm once Windows prints it
 
             try
             {
-                PrintText = objDataTable.Rows[0]["PrintText"].ToString();
-                PrintText1 = objDataTable.Rows[0]["PrintText1"].ToString();
-                PrintText2 = objDataTable.Rows[0]["PrintText2"].ToString();
-                FileName = objDataTable.Rows[0]["FileName"].ToString();
-                slno = Convert.ToInt32(objDataTable.Rows[0]["slno"].ToString());
-                PrintText2 = InstalledPrinterFor(PrintText2, slno);   // 5.0.4
-                // AB#3163: when the job reached this PC, and how (live pickup or 5-second check).
-                WriteToFile("PICKUP slno=" + slno + " file=" + FileName + " via " + (useLivePickup ? "live" : "poll"));
-
                 System.Net.WebClient wc = new System.Net.WebClient();
 
                 if (PrintText == "Text")
                 {
-                    string filename = "";
-                    //filename = PrintText1.Replace("https://secure.quickflora.com/FAX/", "");
-                    filename = FileName;
-                    lblprintfile.Text = "1.Downloading file:";
-                    lblprintfile.Text = lblprintfile.Text + "\r\n" + filename;
-                   // lblprintfile.Text = lblprintfile.Text + "\r\nPrinter Name :" + PrintText2;
+                    string filename = FileName;
+                    Ui(delegate { lblprintfile.Text = "1.Downloading file:\r\n" + filename; });
                     EnsureFolderFor("C:\\QFPrintApp\\Receipts\\" + filename);
                     wc.DownloadFile(PrintText1, "C:\\QFPrintApp\\Receipts\\" + filename);
-                    lblprintfile.Text = lblprintfile.Text + "\r\n" + "2.Printing file on printer :" + PrintText2;
+                    Ui(delegate { lblprintfile.Text = "1.Downloading file:\r\n" + filename + "\r\n2.Printing file on printer :" + PrintText2; });
                     bool hadDrawer; long fileSize;
                     string detail = InspectPrintFile("C:\\QFPrintApp\\Receipts\\" + filename, out hadDrawer, out fileSize);
                     SpoolWatch.Start(PrintText2, "QuickFlora-Print", DateTime.Now);   // AB#3164: watch before sending
                     bool sentOk = QuickFloraEMV.RawPrinterHelper.SendFileToPrinter(PrintText2, "C:\\QFPrintApp\\Receipts\\" + filename);
                     LogPrintJob(PrintText, filename, slno, PrintText2, detail, hadDrawer, fileSize, sentOk);
-                    sentJob = AddJob(PrintText, filename, PrintText2, sentOk, (DateTime.Now - jobStarted).TotalSeconds);
+                    sentJob = UiAddJob(PrintText, filename, PrintText2, sentOk, (DateTime.Now - jobStarted).TotalSeconds);
                     if (sentJob != null) sentJob.Doc = "QuickFlora-Print";   // raw jobs are spooled under this name (clsPrinting)
                     jobShown = true;
                 }
 
                 // AB#3170 (v4-8): HTML work ticket through Edge when the server saved one beside the
-                // PDF (QFReports WTReportV2RetailUS). Falls back to the PDF + Adobe below otherwise.
+                // PDF (QFReports WTReportV2RetailUS). Falls back to the PDF below otherwise.
                 bool printedHtml = false;
                 if (PrintText == "PDF" && PrintText1.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
                 {
@@ -689,17 +963,16 @@ namespace QuickfloraPrinting
                     string htmlPath = "C:\\QFPrintApp\\PDF\\" + htmlName;
                     if (HtmlPrinter.TryDownload(PrintText1.Substring(0, PrintText1.Length - 4) + ".html", htmlPath))
                     {
-                        lblprintfile.Text = "1.Downloaded HTML: " + htmlName + "\r\n2.Printing with Edge on " + PrintText2;
-                        SetDefaultSystemPrinter(PrintText2);      // Edge kiosk printing uses the default printer
+                        Ui(delegate { lblprintfile.Text = "1.Downloaded HTML: " + htmlName + "\r\n2.Printing with Edge on " + PrintText2; });
                         string title = HtmlPrinter.TitleOf(htmlPath);
                         if (string.IsNullOrEmpty(title)) title = htmlName;
                         SpoolWatch.Start(PrintText2, title, DateTime.Now);
-                        string htmlDetail;
-                        printedHtml = HtmlPrinter.Print(htmlPath, PrintText2, title, out htmlDetail);
+                        string htmlDetail = "";
+                        printedHtml = PrintWithEdge(true, htmlPath, PrintText2, title, t.DefaultPrinter, out htmlDetail);
                         LogPrintJob("HTML", htmlName, slno, PrintText2, " bytes=" + new System.IO.FileInfo(htmlPath).Length + htmlDetail, false, 0, printedHtml);
                         if (printedHtml)
                         {
-                            sentJob = AddJob(PrintText, htmlName, PrintText2, true, (DateTime.Now - jobStarted).TotalSeconds);
+                            sentJob = UiAddJob(PrintText, htmlName, PrintText2, true, (DateTime.Now - jobStarted).TotalSeconds);
                             if (sentJob != null) sentJob.Doc = title;
                             jobShown = true;
                         }
@@ -713,113 +986,156 @@ namespace QuickfloraPrinting
 
                 if (PrintText == "PDF" && !printedHtml)
                 {
-                    string filename = "";
-                    //filename = PrintText1.Replace("https://secure.localflorist.com/PDF/", "");
-                    filename = FileName;
-                    lblprintfile.Text = "1.Downloading file:";
-                    lblprintfile.Text = lblprintfile.Text + "\r\n" + filename;
-                    //lblprintfile.Text = lblprintfile.Text + "\r\nPrinter Name :" + PrintText2;
-                    //filename = PrintText2 + "_" + filename;
-                    //filename.Replace("\\", "");
-                    //filename.Replace(" ", "");
-                    //filename.Replace(" ", "");
-
+                    string filename = FileName;
+                    Ui(delegate { lblprintfile.Text = "1.Downloading file:\r\n" + filename; });
                     EnsureFolderFor("C:\\QFPrintApp\\PDF\\" + filename);
                     wc.DownloadFile(PrintText1, "C:\\QFPrintApp\\PDF\\" + filename);
-                    lblprintfile.Text = lblprintfile.Text + "\r\n" + "2.Printing file on printer :" + PrintText2;
-                    SetDefaultSystemPrinter(PrintText2);
-                    // AB#1323 — log worksheets and cards too. v3.2 logged only the receipt, so
-                    // Daman's 15 Aug test printed three documents and produced a single line,
-                    // which made a complete log look like a broken one.
+                    Ui(delegate { lblprintfile.Text = "1.Downloading file:\r\n" + filename + "\r\n2.Printing file on printer :" + PrintText2; });
+                    // AB#1323 — log worksheets and cards too.
                     bool pdfDrawer; long pdfSize;
                     string pdfDetail = InspectPrintFile("C:\\QFPrintApp\\PDF\\" + filename, out pdfDrawer, out pdfSize);
                     bool pdfSent = true;
-                    SpoolWatch.Start(PrintText2, filename, DateTime.Now);   // AB#3164: watch before Adobe spools it
+                    SpoolWatch.Start(PrintText2, filename, DateTime.Now);   // AB#3164: watch before Edge spools it
                     // 5.0.5 (AB#3472): PDFs print through Edge; Adobe Reader is no longer used.
                     try
                     {
                         string pdfEdge;
-                        pdfSent = HtmlPrinter.PrintPdf("C:\\QFPrintApp\\PDF\\" + filename, PrintText2, out pdfEdge);
+                        pdfSent = PrintWithEdge(false, "C:\\QFPrintApp\\PDF\\" + filename, PrintText2, null, t.DefaultPrinter, out pdfEdge);
                         pdfDetail += pdfEdge;
                     }
                     catch (Exception ex)
                     {
                         pdfSent = false;
-                        ReportError("obj_CheckPOSForPrintingCompleted", filename, ex);
+                        UiReportError("obj_CheckPOSForPrintingCompleted", filename, ex);
                     }
                     LogPrintJob(PrintText, filename, slno, PrintText2, pdfDetail, pdfDrawer, pdfSize, pdfSent);
-                    sentJob = AddJob(PrintText, filename, PrintText2, pdfSent, (DateTime.Now - jobStarted).TotalSeconds);
-                    if (sentJob != null) sentJob.Doc = filename;              // Adobe spools the PDF under its file name
+                    sentJob = UiAddJob(PrintText, filename, PrintText2, pdfSent, (DateTime.Now - jobStarted).TotalSeconds);
+                    if (sentJob != null) sentJob.Doc = filename;              // Edge spools the PDF under its file name
                     jobShown = true;
-                    //Pdf.PrintPDFs("C:\\QFPrintApp\\PDF\\" + PrintText2 + "_" + filename, txtadobe.Text, PrintText2);
-
                 }
-
-                //QuickFloraEMV.RawPrinterHelper.SendStringToPrinter(txtprinter.Text, receipt);
-                //Pdf.PrintPDFs("C:\\QuickfloraPrintingUpdated\\PDF\\" + txturlmc, txtadobe.Text, txtcardprinter.Text);
-
-                SetDefaultSystemPrinter(txtdefaultprinter.Text);
-
-                //object printerName = txtdefaultprinter.Text;
-                //ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT * FROM Win32_Printer");
-                //ManagementObjectCollection collection = searcher.Get();
-
-                //foreach (ManagementObject currentObject in collection)
-                //{
-
-                //    if (currentObject["name"].ToString() == printerName.ToString())
-                //    {
-
-                //        currentObject.InvokeMethod("SetDefaultPrinter", new object[] { printerName });
-
-                //    }
-
-                //}
-
-
             }
             catch (Exception ex)
             {
-                ReportError("obj_CheckPOSForPrintingCompleted", "", ex);
+                UiReportError("obj_CheckPOSForPrintingCompleted", "", ex);
                 // AB#3189: a download or send that threw used to vanish from the screen. Show it.
                 if (!jobShown && FileName.Length > 0)
-                    AddJob(PrintText, FileName, PrintText2, false, (DateTime.Now - jobStarted).TotalSeconds);
-
+                    UiAddJob(PrintText, FileName, PrintText2, false, (DateTime.Now - jobStarted).TotalSeconds);
             }
 
             // AB#3164 (v4): tell the server "done" only once Windows says the page printed.
-            // CheckPOSForPrinting already marked this row taken ([Read]=0), so it is not sent again
-            // while we wait, and it does not block the jobs behind it. Until 4.0 the row was marked
-            // done here even when the printer was off or the wrong printer (qfdemo 36319, 7 Oct 2026).
-            if (slno > 0 && sentJob != null && sentJob.Ok)
+            // CheckPOSForPrinting already marked this row taken ([Read]=0), so it is not sent again.
+            JobRow done = sentJob;
+            Ui(delegate
             {
-                sentJob.Slno = slno;
-                sentJob.Since = jobStarted;
-                sentJob.Confirm = "Printing";
-                pendingConfirm.Add(sentJob);
-                timerConfirm.Enabled = true;
-                RefreshJobList();
-                lblprintfile.Text = lblprintfile.Text + "\r\n" + "3.Waiting for the printer.";
-                timer1.Enabled = true;
-                return;
-            }
-            if (slno > 0)
-            {
+                if (slno > 0 && done != null && done.Ok)
+                {
+                    done.Slno = slno;
+                    done.Since = jobStarted;
+                    done.Confirm = "Printing";
+                    pendingConfirm.Add(done);
+                    timerConfirm.Enabled = true;
+                    RefreshJobList();
+                    lblprintfile.Text = lblprintfile.Text + "\r\n" + "3.Waiting for the printer.";
+                    return;
+                }
                 // Could not be sent at all: leave it open on the server (taken, not done) so it shows
-                // as not printed instead of being marked done. 4.0.4: also when it failed before the
-                // file name was known (staging test 8 Oct 2026: such a job fell through and was marked done).
+                // as not printed instead of being marked done.
                 WriteToFile("NOT PRINTED slno=" + slno + " file=" + FileName + " - left open on the server");
                 PrintMonitor.Job(jobStarted, slno, FormName(PrintText, FileName), FileName, PrintText2, false,
                     "Not printed: could not be sent to the printer");
-                timer1.Enabled = true;
-                return;
+            });
+        }
+
+        /// <summary>
+        /// 5.0.7: print an HTML ticket (html=true) or a PDF through the printer's warm Edge. When that
+        /// Edge has already printed, the default printer is left alone, so other printers keep printing
+        /// at the same time. Otherwise (first job, or Edge must be started) the printer is made the
+        /// Windows default under DefaultPrinterLock until Windows has the job, then put back.
+        /// </summary>
+        private bool PrintWithEdge(bool html, string path, string printer, string title, string defaultPrinter, out string detail)
+        {
+            detail = "";
+            if (WarmEdge.IsReady(printer))
+            {
+                bool notSent;
+                bool ok = html ? HtmlPrinter.Print(path, printer, title, true, out notSent, out detail)
+                               : HtmlPrinter.PrintPdf(path, printer, true, out notSent, out detail);
+                if (ok || !notSent) return ok;   // only retry when nothing reached Edge (never print twice)
+                detail += " | retry with default printer";
             }
+            string d2;
+            bool sent;
+            lock (DefaultPrinterLock)
+            {
+                SetDefaultSystemPrinter(printer);   // Edge kiosk printing uses the default printer
+                bool notSent2;
+                sent = html ? HtmlPrinter.Print(path, printer, title, false, out notSent2, out d2)
+                            : HtmlPrinter.PrintPdf(path, printer, false, out notSent2, out d2);
+                if (!string.IsNullOrEmpty(defaultPrinter)) SetDefaultSystemPrinter(defaultPrinter);
+            }
+            detail += d2;
+            return sent;
+        }
 
-            QFPrintService.QFPrintService obj = new QFPrintService.QFPrintService();
-            obj.UpdatePOSForPrintingCompleted += new QFPrintService.UpdatePOSForPrintingCompletedEventHandler(obj_UpdatePOSForPrintingCompleted);
-            obj.UpdatePOSForPrintingAsync(Program.CompanyID, Program.DivisionID, Program.DepartmentID , slno);
+        /// <summary>
+        /// AB#3796: wake one printer's print path. Runs on its worker thread. Never sends anything that
+        /// prints: it wakes the printer's warm Edge (or starts it, like the first job would) and reads
+        /// the printer's state, which makes Windows load its driver and talk to the print queue.
+        /// </summary>
+        internal void RunWarmUp(string printer, PrintTask t)
+        {
+            DateTime t0 = DateTime.Now;
+            string edge = "not used";
+            try
+            {
+                if (!IsReceiptPrinter(printer) && HtmlPrinter.EdgePath() != null)
+                {
+                    string d;
+                    if (WarmEdge.IsAlive(printer))
+                        edge = WarmEdge.Evaluate(printer, "1", false, out d) ? "ok" : "ping failed" + d;
+                    else
+                    {
+                        lock (DefaultPrinterLock)
+                        {
+                            // Starting Edge makes its printer the Windows default (see WarmEdge); put it back after.
+                            edge = WarmEdge.Navigate(printer, "about:blank", true, out d) ? "started" : "start failed" + d;
+                            if (!string.IsNullOrEmpty(t.DefaultPrinter)) SetDefaultSystemPrinter(t.DefaultPrinter);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                edge = "error " + ex.GetType().Name;
+            }
+            string status = PrinterStatusText(printer);
+            WriteToFile("WARM printer=" + printer + " edge=" + edge + " status=" + status
+                + " took=" + (DateTime.Now - t0).TotalSeconds.ToString("0.0") + "s");
+        }
 
-
+        /// <summary>AB#3796: the printer's state from Windows. Reading it also loads the printer driver.</summary>
+        private static string PrinterStatusText(string printer)
+        {
+            try
+            {
+                System.Drawing.Printing.PrinterSettings ps = new System.Drawing.Printing.PrinterSettings();
+                ps.PrinterName = printer;
+                bool valid = ps.IsValid;
+                string wql = "SELECT PrinterStatus, WorkOffline, DetectedErrorState FROM Win32_Printer WHERE Name='"
+                    + printer.Replace("\\", "\\\\").Replace("'", "\\'") + "'";
+                using (ManagementObjectSearcher s = new ManagementObjectSearcher(wql))
+                {
+                    foreach (ManagementObject o in s.Get())
+                        return "printerStatus=" + Convert.ToString(o["PrinterStatus"])
+                            + (Convert.ToBoolean(o["WorkOffline"]) ? " OFFLINE" : "")
+                            + " error=" + Convert.ToString(o["DetectedErrorState"]);
+                }
+                return valid ? "found" : "NOT INSTALLED";
+            }
+            catch (Exception ex)
+            {
+                return "unknown(" + ex.GetType().Name + ")";
+            }
         }
 
 
@@ -1595,20 +1911,26 @@ namespace QuickfloraPrinting
             bool ok;
             if (isHtml)
             {
-                SetDefaultSystemPrinter(src.Printer);
                 doc = HtmlPrinter.TitleOf(path);
                 if (string.IsNullOrEmpty(doc)) doc = src.File;
                 SpoolWatch.Start(src.Printer, doc, started);
-                ok = HtmlPrinter.Print(path, src.Printer, doc, out detail);
+                lock (DefaultPrinterLock)   // 5.0.7: printer workers may be printing at the same time
+                {
+                    SetDefaultSystemPrinter(src.Printer);
+                    ok = HtmlPrinter.Print(path, src.Printer, doc, out detail);
+                }
             }
             else if (isPdf)
             {
-                SetDefaultSystemPrinter(src.Printer);
                 doc = src.File;   // Adobe spools the PDF under its file name
                 SpoolWatch.Start(src.Printer, doc, started);
                 ok = true;
-                try { Pdf.PrintPDFs(path, txtadobe.Text, src.Printer); }
-                catch (Exception ex) { ok = false; ReportError("Reprint", src.File, ex); }
+                lock (DefaultPrinterLock)
+                {
+                    SetDefaultSystemPrinter(src.Printer);
+                    try { Pdf.PrintPDFs(path, txtadobe.Text, src.Printer); }
+                    catch (Exception ex) { ok = false; ReportError("Reprint", src.File, ex); }
+                }
             }
             else
             {
