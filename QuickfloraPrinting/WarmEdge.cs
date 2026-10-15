@@ -32,6 +32,7 @@ namespace QuickfloraPrinting
             public string Profile;
             public ClientWebSocket Socket;
             public int NextId;
+            public bool Bound;   // 5.0.7: has printed; from now on it prints to its own printer whatever the default is
         }
 
         private static readonly object Gate = new object();
@@ -43,16 +44,59 @@ namespace QuickfloraPrinting
         /// <summary>Opens a page or file in the printer's warm Edge. False if Edge could not be reached.</summary>
         public static bool Navigate(string printer, string url, out string detail)
         {
-            return Send(printer, "Page.navigate", "{\"url\":\"" + Escape(url) + "\"}", out detail);
+            return Navigate(printer, url, true, out detail);
+        }
+
+        /// <summary>5.0.7: allowStart = false uses a running Edge only (starting one changes the default printer).</summary>
+        public static bool Navigate(string printer, string url, bool allowStart, out string detail)
+        {
+            return Send(printer, "Page.navigate", "{\"url\":\"" + Escape(url) + "\"}", allowStart, out detail);
         }
 
         /// <summary>Runs a line of script in the page currently open in the printer's warm Edge.</summary>
         public static bool Evaluate(string printer, string script, out string detail)
         {
-            return Send(printer, "Runtime.evaluate", "{\"expression\":\"" + Escape(script) + "\"}", out detail);
+            return Evaluate(printer, script, true, out detail);
         }
 
-        private static bool Send(string printer, string method, string paramsJson, out string detail)
+        public static bool Evaluate(string printer, string script, bool allowStart, out string detail)
+        {
+            return Send(printer, "Runtime.evaluate", "{\"expression\":\"" + Escape(script) + "\"}", allowStart, out detail);
+        }
+
+        /// <summary>5.0.7: Edge for this printer is running and has already printed once.</summary>
+        public static bool IsReady(string printer)
+        {
+            lock (Gate)
+            {
+                Instance inst;
+                if (!Instances.TryGetValue(printer, out inst)) return false;
+                try { return inst.Bound && inst.Socket.State == WebSocketState.Open; } catch { return false; }
+            }
+        }
+
+        /// <summary>5.0.8: Edge for this printer is running (it may not have printed yet).</summary>
+        public static bool IsAlive(string printer)
+        {
+            lock (Gate)
+            {
+                Instance inst;
+                if (!Instances.TryGetValue(printer, out inst)) return false;
+                try { return inst.Socket.State == WebSocketState.Open; } catch { return false; }
+            }
+        }
+
+        /// <summary>5.0.7: a job from this Edge reached its printer's queue.</summary>
+        public static void MarkBound(string printer)
+        {
+            lock (Gate)
+            {
+                Instance inst;
+                if (Instances.TryGetValue(printer, out inst)) inst.Bound = true;
+            }
+        }
+
+        private static bool Send(string printer, string method, string paramsJson, bool allowStart, out string detail)
         {
             detail = "";
             lock (Gate)
@@ -62,6 +106,14 @@ namespace QuickfloraPrinting
                     Instance inst = null;
                     try
                     {
+                        if (!allowStart)
+                        {
+                            Instance running;
+                            bool open = false;
+                            if (Instances.TryGetValue(printer, out running))
+                                try { open = running.Socket.State == WebSocketState.Open; } catch { }
+                            if (!open) { detail += " warm-edge not running"; return false; }
+                        }
                         inst = GetOrStart(printer, ref detail);
                         if (inst == null) return false;
                         inst.NextId++;
@@ -75,6 +127,7 @@ namespace QuickfloraPrinting
                     {
                         detail += " warm-edge " + method + " failed(" + ex.GetType().Name + ")";
                         Drop(printer);   // dead Edge or connection: start a fresh one on the second try
+                        if (!allowStart) return false;   // 5.0.7: the caller retries under the default-printer lock
                     }
                 }
                 return false;

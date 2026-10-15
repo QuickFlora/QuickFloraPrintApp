@@ -75,7 +75,19 @@ namespace QuickfloraPrinting
         /// </summary>
         public static bool Print(string htmlPath, string printer, string docTitle, out string detail)
         {
+            bool notSent;
+            return Print(htmlPath, printer, docTitle, false, out notSent, out detail);
+        }
+
+        /// <summary>
+        /// 5.0.7 (AB#3795): warmOnly = use this printer's warm Edge only; never start an Edge and never
+        /// fall back to a fresh one (both depend on the Windows default printer, which another printer's
+        /// worker may be using). notSent = nothing reached Edge, so the caller may safely try again.
+        /// </summary>
+        public static bool Print(string htmlPath, string printer, string docTitle, bool warmOnly, out bool notSent, out string detail)
+        {
             DateTime started = DateTime.Now;
+            notSent = true;
             string edge = EdgePath();
             if (edge == null) { detail = " html=EDGE NOT FOUND"; return false; }
 
@@ -97,13 +109,21 @@ namespace QuickfloraPrinting
             // 5.0.5 (AB#3471): hand the ticket to this printer's warm Edge. Starting a new Edge
             // (below) is only the fallback when the warm one cannot be reached.
             string warmDetail;
-            if (WarmEdge.Navigate(printer, new Uri(printFile).AbsoluteUri, out warmDetail))
+            if (WarmEdge.Navigate(printer, new Uri(printFile).AbsoluteUri, !warmOnly, out warmDetail))
             {
+                notSent = false;
                 bool got = WaitForJob(printer, docTitle, started, 15);
+                if (got) WarmEdge.MarkBound(printer);
                 CleanOldPrintFiles(Path.GetDirectoryName(htmlPath));
                 detail = (got ? " html=warm edge spooled " + (DateTime.Now - started).TotalSeconds.ToString("0.0") + "s"
                               : " html=warm edge NO JOB after 15s") + warmDetail;
                 return got;
+            }
+            if (warmOnly)
+            {
+                detail = " html=warm edge not ready" + warmDetail;
+                try { File.Delete(printFile); } catch { }
+                return false;
             }
 
             try
@@ -116,6 +136,7 @@ namespace QuickfloraPrinting
                 psi.UseShellExecute = false;
                 psi.CreateNoWindow = true;
                 Process.Start(psi);
+                notSent = false;
             }
             catch (Exception ex)
             {
@@ -153,14 +174,24 @@ namespace QuickfloraPrinting
         /// </summary>
         public static bool PrintPdf(string pdfPath, string printer, out string detail)
         {
+            bool notSent;
+            return PrintPdf(pdfPath, printer, false, out notSent, out detail);
+        }
+
+        /// <summary>5.0.7 (AB#3795): warmOnly / notSent as for Print.</summary>
+        public static bool PrintPdf(string pdfPath, string printer, bool warmOnly, out bool notSent, out string detail)
+        {
             DateTime started = DateTime.Now;
+            notSent = true;
             string docName = Path.GetFileName(pdfPath);
             string d1, d2;
-            if (!WarmEdge.Navigate(printer, new Uri(pdfPath).AbsoluteUri, out d1)) { detail = " pdf=edge not reachable" + d1; return false; }
+            if (!WarmEdge.Navigate(printer, new Uri(pdfPath).AbsoluteUri, !warmOnly, out d1)) { detail = " pdf=edge not reachable" + d1; return false; }
             // The viewer needs a moment to load the file before it can print it.
             Thread.Sleep(700);
-            if (!WarmEdge.Evaluate(printer, "window.print()", out d2)) { detail = " pdf=edge print failed" + d1 + d2; return false; }
+            if (!WarmEdge.Evaluate(printer, "window.print()", !warmOnly, out d2)) { detail = " pdf=edge print failed" + d1 + d2; return false; }
+            notSent = false;
             bool got = WaitForJob(printer, docName, started, 15);
+            if (got) WarmEdge.MarkBound(printer);
             detail = (got ? " pdf=edge spooled " + (DateTime.Now - started).TotalSeconds.ToString("0.0") + "s"
                           : " pdf=edge NO JOB after 15s") + d1 + d2;
             return got;
