@@ -223,9 +223,9 @@ namespace QuickfloraPrinting
             if ((j.LastMask & 1024) != 0) return "printer needs attention";
             if ((j.LastMask & 2) != 0) return "printer error";
             if ((j.LastMask & 512) != 0) return "print queue blocked";
-            if (!j.Seen) return "no print job reached Windows within 2 minutes";
+            if (!j.Seen) return "no print job reached Windows within " + GiveUpSeconds + " seconds";
             if (j.LastWasError) return "removed from the Windows queue after an error";
-            if (age > 1800) return "still not printed after 30 minutes";
+            if (age > GiveUpSeconds) return "still not printed after " + GiveUpSeconds + " seconds";
             return "not confirmed";
         }
 
@@ -1258,8 +1258,12 @@ namespace QuickfloraPrinting
         ///  gone after being seen without an error = printed (Windows deletes printed jobs).
         /// A raw receipt can print and vanish before we look, so after 10 s unseen it counts as
         /// printed if its printer shows no fault. A PDF is spooled by Adobe, which can fail silently,
-        /// so unseen after 2 minutes it is NOT printed.
+        /// so unseen after GiveUpSeconds it is NOT printed.
+        /// 5.1.0 (Alex, 18 Oct 2026): a work ticket or card that has not printed after 60 s is reported
+        /// as not printed - never 30 minutes. The Windows job may still print later (paper added); the
+        /// shop has already been told.
         /// </summary>
+        private const int GiveUpSeconds = 60;
         private void CheckPending(List<SpoolJob> queue)
         {
             if (queue == null) return;   // WMI failed this time; try again next tick
@@ -1303,9 +1307,9 @@ namespace QuickfloraPrinting
                     outcome = j.LastWasError ? "Not printed" : "Printed";
                 }
                 else if (j.Doc == "QuickFlora-Print" && age > 10 && !PrinterHasFault(j.Printer)) outcome = "Printed";
-                else if (age > 120) outcome = "Not printed";
+                else if (age > GiveUpSeconds) outcome = "Not printed";
 
-                if (age > 1800 && outcome == null) outcome = "Not printed";   // stop watching after 30 min
+                if (age > GiveUpSeconds && outcome == null) outcome = "Not printed";   // stop watching: the shop must know within a minute
 
                 if (outcome != null)
                 {
