@@ -51,7 +51,16 @@
       <HintPath>..\lib\System.Data.SQLite.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Microsoft.AspNet.SignalR.Client, Version=2.4.3.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\lib\Microsoft.AspNet.SignalR.Client.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\lib\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Deployment" />
+    <Reference Include="System.Net.Http" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.EnterpriseServices" />
     <Reference Include="System.Management" />
@@ -66,6 +75,8 @@
     <Compile Include="clsQFPrinting.cs" />
     <Compile Include="EdgeStore.cs" />
     <Compile Include="EdgeSync.cs" />
+    <Compile Include="EdgeHubClient.cs" />
+    <Compile Include="CompaniesCacheSource.cs" />
     <Compile Include="WarmEdge.cs" />
     <Compile Include="DrawerOpenDialog.cs">
       <SubType>Form</SubType>

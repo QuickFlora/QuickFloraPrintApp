@@ -26,6 +26,19 @@ the DLLs are checked in like `Microsoft.VisualBasic.PowerPacks.Vs.dll`.
 Kill switch on a PC: `HKCU\Software\QuickfloraPrinting\EdgeStoreDisabled` = 1 (DWORD), then restart
 the app. Delete `C:\QFPrintApp\edge\` to start the store from empty.
 
+### The push client (6.1.0, AB#3958)
+
+`EdgeHubClient.cs` keeps one SignalR connection to **qf-edge-hub** (repo `QuickFlora/qf-edge-hub`) at
+`<print web service host>/edgehub`. The client library is vendored like SQLite: `lib\Microsoft.AspNet.SignalR.Client.dll`
+(NuGet `Microsoft.AspNet.SignalR.Client` 2.4.3, `lib\net45`) and `lib\Newtonsoft.Json.dll` (NuGet
+`Newtonsoft.Json` 13.0.4, `lib\net45`), both verified on nuget.org 2026-10-18. No NuGet restore.
+While the hub is connected the app sends no WaitForPrintJob / PingPOSForPrinting at all (the log line
+`HUB mode: ... WaitForPrintJob calls=0 Ping calls=0` once a minute is the proof); when the hub is
+unreachable the app behaves exactly as 6.0.0. Registry (HKCU\Software\QuickfloraPrinting):
+`EdgeHubDisabled` = 1 turns push off, `EdgeHubUrl` overrides the hub address, `EdgeHubKey` is the
+shared key when the hub requires one. `CompaniesCacheSource.cs` is the first EdgeSync source; it pulls
+from the hub's `cache.ashx`.
+
 ## Building the installer
 
 The installer is an [Inno Setup](https://jrsoftware.org/isdl.php) script at

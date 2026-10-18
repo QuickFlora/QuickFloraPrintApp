@@ -26,7 +26,7 @@
 ; ============================================================================
 
 #define AppName        "QuickFlora Print"
-#define AppVersion     "6.0.0"
+#define AppVersion     "6.1.0"
 #define AppPublisher   "Sunflower Technologies"
 #define AppURL         "https://quickflora.com"
 #define ExeName        "QuickfloraPrinting.exe"
@@ -89,6 +89,9 @@ Source: "{#BuildDir}\Microsoft.VisualBasic.PowerPacks.Vs.dll"; DestDir: "{app}";
 ; 6.0.0 (AB#3963): the edge store is SQLite inside the app - a managed DLL plus the
 ; native engine, which System.Data.SQLite loads from {app}\x86 or {app}\x64 itself.
 Source: "{#BuildDir}\System.Data.SQLite.dll";   DestDir: "{app}";     Flags: ignoreversion
+; 6.1.0 (AB#3958): push client for qf-edge-hub + its JSON library
+Source: "{#BuildDir}\Microsoft.AspNet.SignalR.Client.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#BuildDir}\Newtonsoft.Json.dll";       DestDir: "{app}";     Flags: ignoreversion
 Source: "{#BuildDir}\x86\SQLite.Interop.dll";   DestDir: "{app}\x86"; Flags: ignoreversion
 Source: "{#BuildDir}\x64\SQLite.Interop.dll";   DestDir: "{app}\x64"; Flags: ignoreversion
 

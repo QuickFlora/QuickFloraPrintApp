@@ -139,10 +139,12 @@ namespace QuickfloraPrinting
 
         // ---------------------------------------------------------------- queue
 
-        /// <summary>A job was taken off the server for this PC. Idempotent per slno.</summary>
-        public static void JobReceived(int slno, string fileName, string printer, string sourceUrl)
+        /// <summary>A job was taken off the server for this PC. Idempotent per slno: true the first time a
+        /// slno is stored, false when it was already there (6.1.0: lets the hub push and the long-poll fallback
+        /// overlap without printing a job twice) or when the store is off.</summary>
+        public static bool JobReceived(long slno, string fileName, string printer, string sourceUrl)
         {
-            if (!opened || slno <= 0) return;
+            if (!opened || slno <= 0) return false;
             try
             {
                 using (SQLiteConnection c = Connect())
@@ -160,14 +162,14 @@ namespace QuickfloraPrinting
                     cmd.Parameters.AddWithValue("@pr", printer ?? "");
                     cmd.Parameters.AddWithValue("@src", sourceUrl ?? "");
                     cmd.Parameters.AddWithValue("@now", Now());
-                    cmd.ExecuteNonQuery();
+                    return cmd.ExecuteNonQuery() > 0;
                 }
             }
-            catch (Exception ex) { log("EDGE store: JobReceived slno=" + slno + " failed: " + ex.Message); }
+            catch (Exception ex) { log("EDGE store: JobReceived slno=" + slno + " failed: " + ex.Message); return false; }
         }
 
         /// <summary>How the job ended. printed=true closes it; false leaves a 'failed' row with the reason.</summary>
-        public static void JobDone(int slno, bool printed, string note)
+        public static void JobDone(long slno, bool printed, string note)
         {
             if (!opened || slno <= 0) return;
             try
