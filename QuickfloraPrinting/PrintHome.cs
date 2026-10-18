@@ -447,6 +447,15 @@ namespace QuickfloraPrinting
             timerMonitor.Interval = 30000;
             timerMonitor.Tick += delegate { MonitorBeat(); };
             timerMonitor.Enabled = true;
+
+            // AB#3963 (epic AB#3961): this PC's own SQLite store. Every job picked up is written there
+            // before it prints, so a crash mid-print leaves a record instead of a silently lost ticket;
+            // the hourly sync agent fills the reference cache once the server endpoints exist.
+            EdgeStore.Open(WriteToFile);
+            foreach (string[] j in EdgeStore.UnfinishedJobs())
+                WriteToFile("EDGE store: job slno=" + j[0] + " file=" + j[1] + " printer=" + j[2]
+                    + " received " + j[4] + " never finished on this PC (left open on the server, will be picked up again)");
+            EdgeSync.Start(WriteToFile);
         }
 
         private void MonitorBeat()
@@ -714,6 +723,8 @@ namespace QuickfloraPrinting
                 if (t.Slno > 0)
                 {
                     WriteToFile("NOT PRINTED slno=" + t.Slno + " file=" + t.FileName + " - left open on the server");
+                    EdgeStore.JobReceived(t.Slno, t.FileName, t.PrintText2, t.PrintText1);
+                    EdgeStore.JobDone(t.Slno, false, "job could not be read from the server reply");   // AB#3963
                     timer1.Enabled = true;
                     return;
                 }
@@ -728,6 +739,7 @@ namespace QuickfloraPrinting
             // AB#3163: when the job reached this PC, and how (live pickup or 5-second check).
             // 5.0.7: queue = jobs already waiting for the same printer.
             WriteToFile("PICKUP slno=" + t.Slno + " file=" + t.FileName + " via " + (useLivePickup ? "live" : "poll") + " queue=" + w.Pending);
+            EdgeStore.JobReceived(t.Slno, t.FileName, t.PrintText2, t.PrintText1);   // AB#3963: durable local copy first
             w.Enqueue(t);
             timer1.Enabled = true;   // ask for the next job now, while this one prints
         }
@@ -1311,6 +1323,8 @@ namespace QuickfloraPrinting
                     if (outcome != "Printed")
                         ReportEvent("Not printed", j.File, "slno=" + j.Slno + " | printer=" + j.Printer + " | form=" + j.Form
                             + " | reason=" + NotPrintedReason(j, age) + " | after=" + age.ToString("0") + "s");
+                    EdgeStore.JobDone(j.Slno, outcome == "Printed",
+                        outcome == "Printed" ? "after " + age.ToString("0") + "s" : NotPrintedReason(j, age));   // AB#3963
                     if (outcome == "Printed" && j.Slno > 0)   // a reprint (slno 0) is not a server job
                     {
                         QFPrintService.QFPrintService obj = new QFPrintService.QFPrintService();

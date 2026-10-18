@@ -13,6 +13,19 @@ C:\Windows\Microsoft.NET\Framework64\v4.0.30319\MSBuild.exe QuickfloraPrinting.s
 Output lands in `QuickfloraPrinting\bin\Release\`. `GenerateSerializationAssemblies=Off` is needed on
 WEB1STG because `sgen.exe` is not installed there; it is harmless everywhere else.
 
+### The edge store (5.1.0, AB#3963)
+
+The app keeps its own SQLite store at `C:\QFPrintApp\edge\edge.db` (see `EdgeStore.cs`). SQLite is
+embedded, not installed: `lib\System.Data.SQLite.dll` (managed, from NuGet
+`Stub.System.Data.SQLite.Core.NetFramework` 1.0.119, `lib\net46`) plus the native engine
+`lib\x86\SQLite.Interop.dll` and `lib\x64\SQLite.Interop.dll` (same package, `build\net46`). The
+project copies the two native DLLs to `bin\Release\x86` and `\x64`; System.Data.SQLite picks the right
+one at run time, so the app stays Any CPU. The installer ships all three. No NuGet restore is needed —
+the DLLs are checked in like `Microsoft.VisualBasic.PowerPacks.Vs.dll`.
+
+Kill switch on a PC: `HKCU\Software\QuickfloraPrinting\EdgeStoreDisabled` = 1 (DWORD), then restart
+the app. Delete `C:\QFPrintApp\edge\` to start the store from empty.
+
 ## Building the installer
 
 The installer is an [Inno Setup](https://jrsoftware.org/isdl.php) script at

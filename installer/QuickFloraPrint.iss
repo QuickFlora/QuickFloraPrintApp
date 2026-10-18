@@ -26,7 +26,7 @@
 ; ============================================================================
 
 #define AppName        "QuickFlora Print"
-#define AppVersion     "5.0.8"
+#define AppVersion     "5.1.0"
 #define AppPublisher   "Sunflower Technologies"
 #define AppURL         "https://quickflora.com"
 #define ExeName        "QuickfloraPrinting.exe"
@@ -86,6 +86,12 @@ Source: "{#BuildDir}\{#ExeName}";                        DestDir: "{app}"; Flags
 Source: "{#BuildDir}\{#ExeName}.config";                 DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildDir}\Microsoft.VisualBasic.PowerPacks.Vs.dll"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
+; 5.1.0 (AB#3963): the edge store is SQLite inside the app - a managed DLL plus the
+; native engine, which System.Data.SQLite loads from {app}\x86 or {app}\x64 itself.
+Source: "{#BuildDir}\System.Data.SQLite.dll";   DestDir: "{app}";     Flags: ignoreversion
+Source: "{#BuildDir}\x86\SQLite.Interop.dll";   DestDir: "{app}\x86"; Flags: ignoreversion
+Source: "{#BuildDir}\x64\SQLite.Interop.dll";   DestDir: "{app}\x64"; Flags: ignoreversion
+
 ; Config.txt holds the shop's own settings (company, division, department,
 ; terminal, Adobe path, printer). onlyifdoesntexist means an upgrade NEVER
 ; overwrites a working shop's configuration - the single most damaging thing
@@ -102,6 +108,8 @@ Source: "..\QuickfloraPrinting\Config.txt"; DestDir: "{app}"; Flags: onlyifdoesn
 Name: "{sd}\QFPrintApp\Receipts"; Permissions: users-modify
 Name: "{sd}\QFPrintApp\PDF";      Permissions: users-modify
 Name: "{app}";                    Permissions: users-modify
+; 5.1.0 (AB#3963): the SQLite edge store lives here (edge.db + WAL files); the app runs unelevated.
+Name: "{sd}\QFPrintApp\edge";     Permissions: users-modify
 
 [Icons]
 Name: "{group}\{#AppName}";          Filename: "{app}\{#ExeName}"

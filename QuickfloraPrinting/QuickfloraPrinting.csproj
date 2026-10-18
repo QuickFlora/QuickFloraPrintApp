@@ -47,6 +47,10 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Data.SQLite, Version=1.0.119.0, Culture=neutral, PublicKeyToken=db937bc2d44ff139, processorArchitecture=MSIL">
+      <HintPath>..\lib\System.Data.SQLite.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System.Deployment" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.EnterpriseServices" />
@@ -60,6 +64,8 @@
   <ItemGroup>
     <Compile Include="clsPrinting.cs" />
     <Compile Include="clsQFPrinting.cs" />
+    <Compile Include="EdgeStore.cs" />
+    <Compile Include="EdgeSync.cs" />
     <Compile Include="WarmEdge.cs" />
     <Compile Include="DrawerOpenDialog.cs">
       <SubType>Form</SubType>
@@ -145,6 +151,15 @@
     <None Include="app.manifest" />
   </ItemGroup>
   <ItemGroup>
+    <!-- System.Data.SQLite loads the native engine from <exe folder>\x86 or \x64 by itself. -->
+    <Content Include="..\lib\x86\SQLite.Interop.dll">
+      <Link>x86\SQLite.Interop.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\lib\x64\SQLite.Interop.dll">
+      <Link>x64\SQLite.Interop.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="QFIcon.ico" />
     <Content Include="QFIconNew.ico" />
     <None Include="Web References\QFPrintService\QFPrintService.disco" />
