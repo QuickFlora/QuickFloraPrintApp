@@ -13,7 +13,7 @@ C:\Windows\Microsoft.NET\Framework64\v4.0.30319\MSBuild.exe QuickfloraPrinting.s
 Output lands in `QuickfloraPrinting\bin\Release\`. `GenerateSerializationAssemblies=Off` is needed on
 WEB1STG because `sgen.exe` is not installed there; it is harmless everywhere else.
 
-### The edge store (7.0.0, AB#3963)
+### The edge store (6.0.0, AB#3963)
 
 The app keeps its own SQLite store at `C:\QFPrintApp\edge\edge.db` (see `EdgeStore.cs`). SQLite is
 embedded, not installed: `lib\System.Data.SQLite.dll` (managed, from NuGet
