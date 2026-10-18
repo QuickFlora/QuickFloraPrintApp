@@ -132,7 +132,7 @@ namespace QuickfloraPrinting
                 h.On<string>("Reject", delegate (string why) { log("HUB rejected this PC: " + why); });
                 c.StateChanged += OnStateChanged;
                 c.Closed += OnClosed;
-                c.Error += delegate (Exception ex) { log("HUB error: " + Short(ex)); };
+                c.Error += delegate (Exception ex) { LogError(Short(ex)); };
                 conn = c; hub = h;
                 log("HUB connecting to " + url + " as " + Program.CompanyID + "/" + Program.DivisionID + "/" + Program.DepartmentID + "/" + Program.TerminalName);
                 c.Start().ContinueWith(delegate (Task t)
@@ -196,6 +196,18 @@ namespace QuickfloraPrinting
         public void Claimed(long slno)
         {
             try { if (IsConnected) hub.Invoke("Claimed", slno); } catch (Exception ex) { log("HUB Claimed(" + slno + ") failed: " + ex.Message); }
+        }
+
+        // While the hub is down the client retries every 2 s and reports each failure; one line per
+        // distinct message per minute is enough for a shop PC's log.
+        private string lastError = ""; private DateTime lastErrorAt = DateTime.MinValue; private int suppressed;
+        private void LogError(string msg)
+        {
+            if (msg == lastError && (DateTime.Now - lastErrorAt).TotalSeconds < 60) { suppressed++; return; }
+            if (suppressed > 0) log("HUB error: previous message repeated " + suppressed + " more time(s)");
+            suppressed = 0; lastError = msg; lastErrorAt = DateTime.Now;
+            if (msg.Length > 160) msg = msg.Substring(0, 160);
+            log("HUB error: " + msg);
         }
 
         private static string Short(Exception ex)

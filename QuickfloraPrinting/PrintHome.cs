@@ -538,9 +538,9 @@ namespace QuickfloraPrinting
             catch (Exception ex) { ReportError("OnHubJob.claim", "", ex); }
             edgeHub.Claimed(j.Slno);
             PrinterWorker w = WorkerFor(t.PrintText2);
-            double latency = j.QueuedAt == DateTime.MinValue ? -1 : (DateTime.Now - j.QueuedAt).TotalSeconds;
+            // Server clock, not ours (the server runs on UTC, the shop PC on local time): the hub log has the push time.
             WriteToFile("PICKUP slno=" + t.Slno + " file=" + t.FileName + " via hub queue=" + w.Pending
-                + (latency >= 0 ? " latency=" + latency.ToString("0.0") + "s" : ""));
+                + (j.QueuedAt == DateTime.MinValue ? "" : " queued-on-server=" + j.QueuedAt.ToString("HH:mm:ss")));
             lblprintrequest.Text = "New Print Request Found";
             lblprintrequest.ForeColor = Color.Green;
             lbltimer.Text = DateTime.Now.ToLongTimeString();
