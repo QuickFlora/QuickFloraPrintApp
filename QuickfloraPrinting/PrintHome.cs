@@ -1259,7 +1259,7 @@ namespace QuickfloraPrinting
         /// A raw receipt can print and vanish before we look, so after 10 s unseen it counts as
         /// printed if its printer shows no fault. A PDF is spooled by Adobe, which can fail silently,
         /// so unseen after GiveUpSeconds it is NOT printed.
-        /// 5.1.0 (Alex, 18 Oct 2026): a work ticket or card that has not printed after 60 s is reported
+        /// 7.0.0 (Alex, 18 Oct 2026): a work ticket or card that has not printed after 60 s is reported
         /// as not printed - never 30 minutes. The Windows job may still print later (paper added); the
         /// shop has already been told.
         /// </summary>
