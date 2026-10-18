@@ -203,9 +203,13 @@ namespace QuickfloraPrinting
         private string lastError = ""; private DateTime lastErrorAt = DateTime.MinValue; private int suppressed;
         private void LogError(string msg)
         {
-            if (msg == lastError && (DateTime.Now - lastErrorAt).TotalSeconds < 60) { suppressed++; return; }
+            // Compare on the first line only: an HTTP failure's message carries the reply headers (Date changes every time).
+            int nl = msg.IndexOfAny(new char[] { '\r', '\n' });
+            string head = nl > 0 ? msg.Substring(0, nl) : msg;
+            if (head == lastError && (DateTime.Now - lastErrorAt).TotalSeconds < 60) { suppressed++; return; }
+            msg = head;
             if (suppressed > 0) log("HUB error: previous message repeated " + suppressed + " more time(s)");
-            suppressed = 0; lastError = msg; lastErrorAt = DateTime.Now;
+            suppressed = 0; lastError = head; lastErrorAt = DateTime.Now;
             if (msg.Length > 160) msg = msg.Substring(0, 160);
             log("HUB error: " + msg);
         }
