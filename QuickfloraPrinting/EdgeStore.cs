@@ -113,7 +113,7 @@ namespace QuickfloraPrinting
                         "  id INTEGER PRIMARY KEY AUTOINCREMENT," +
                         "  slno INTEGER NOT NULL," +
                         "  company TEXT NOT NULL, division TEXT NOT NULL, department TEXT NOT NULL, terminal TEXT NOT NULL," +
-                        "  file_name TEXT, printer TEXT, form TEXT," +
+                        "  file_name TEXT, printer TEXT, source_url TEXT," +
                         "  received_at TEXT NOT NULL," +
                         "  status TEXT NOT NULL," +          // queued | printed | failed
                         "  done_at TEXT, note TEXT);" +
@@ -140,7 +140,7 @@ namespace QuickfloraPrinting
         // ---------------------------------------------------------------- queue
 
         /// <summary>A job was taken off the server for this PC. Idempotent per slno.</summary>
-        public static void JobReceived(int slno, string fileName, string printer, string form)
+        public static void JobReceived(int slno, string fileName, string printer, string sourceUrl)
         {
             if (!opened || slno <= 0) return;
             try
@@ -149,8 +149,8 @@ namespace QuickfloraPrinting
                 using (SQLiteCommand cmd = c.CreateCommand())
                 {
                     cmd.CommandText =
-                        "INSERT OR IGNORE INTO queue (slno, company, division, department, terminal, file_name, printer, form, received_at, status) " +
-                        "VALUES (@slno, @c, @d, @p, @t, @f, @pr, @form, @now, 'queued');";
+                        "INSERT OR IGNORE INTO queue (slno, company, division, department, terminal, file_name, printer, source_url, received_at, status) " +
+                        "VALUES (@slno, @c, @d, @p, @t, @f, @pr, @src, @now, 'queued');";
                     cmd.Parameters.AddWithValue("@slno", slno);
                     cmd.Parameters.AddWithValue("@c", Program.CompanyID ?? "");
                     cmd.Parameters.AddWithValue("@d", Program.DivisionID ?? "");
@@ -158,7 +158,7 @@ namespace QuickfloraPrinting
                     cmd.Parameters.AddWithValue("@t", Program.TerminalName ?? "");
                     cmd.Parameters.AddWithValue("@f", fileName ?? "");
                     cmd.Parameters.AddWithValue("@pr", printer ?? "");
-                    cmd.Parameters.AddWithValue("@form", form ?? "");
+                    cmd.Parameters.AddWithValue("@src", sourceUrl ?? "");
                     cmd.Parameters.AddWithValue("@now", Now());
                     cmd.ExecuteNonQuery();
                 }
@@ -186,7 +186,7 @@ namespace QuickfloraPrinting
             catch (Exception ex) { log("EDGE store: JobDone slno=" + slno + " failed: " + ex.Message); }
         }
 
-        /// <summary>Jobs this PC received but never finished (crash, power cut). slno, file, printer, form, received_at.</summary>
+        /// <summary>Jobs this PC received but never finished (crash, power cut). slno, file, printer, source_url, received_at.</summary>
         public static List<string[]> UnfinishedJobs()
         {
             List<string[]> rows = new List<string[]>();
@@ -196,7 +196,7 @@ namespace QuickfloraPrinting
                 using (SQLiteConnection c = Connect())
                 using (SQLiteCommand cmd = c.CreateCommand())
                 {
-                    cmd.CommandText = "SELECT slno, file_name, printer, form, received_at FROM queue WHERE status='queued' ORDER BY received_at;";
+                    cmd.CommandText = "SELECT slno, file_name, printer, source_url, received_at FROM queue WHERE status='queued' ORDER BY received_at;";
                     using (SQLiteDataReader r = cmd.ExecuteReader())
                         while (r.Read())
                             rows.Add(new string[] { r[0].ToString(), r[1].ToString(), r[2].ToString(), r[3].ToString(), r[4].ToString() });
