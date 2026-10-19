@@ -1420,10 +1420,45 @@ namespace QuickfloraPrinting
 
                 if (age > GiveUpSeconds && outcome == null) outcome = "Not printed";   // stop watching: the shop must know within a minute
 
+                // 6.1.2 (AB#3958, Alex, 19 Oct 2026): a row already reported Not printed stays in
+                // pendingConfirm so this timer keeps looking at Windows' queue. If paper is added and
+                // Windows finishes the job, we upgrade the row to Printed, tell the server, and the
+                // headline / "N jobs not printed" count clear on their own. If nothing happens within
+                // 60 min (the banner window), stop watching; the row stays Not printed.
+                if (j.NotPrintedReported)
+                {
+                    if (outcome == "Printed")
+                    {
+                        SpoolWatch.Stop(j.Printer, j.Doc);
+                        pendingConfirm.RemoveAt(i);
+                        j.Confirm = "Printed";
+                        j.Ok = true;
+                        j.Waiting = false;
+                        changed = true;
+                        WriteToFile("LATER PRINTED slno=" + j.Slno + " file=" + j.File + " printer=" + j.Printer
+                            + " - Windows finished it after " + age.ToString("0") + "s (was reported Not printed)");
+                        PrintMonitor.Job(j.Since, j.Slno, j.Form, j.File, j.Printer, true,
+                            "Printed after recovery, " + age.ToString("0") + "s" + (j.Slno == 0 ? " (reprint)" : ""));
+                        ReportEvent("Printed after recovery", j.File, "slno=" + j.Slno + " | printer=" + j.Printer
+                            + " | form=" + j.Form + " | after=" + age.ToString("0") + "s");
+                        EdgeStore.JobDone(j.Slno, true, "later printed, after " + age.ToString("0") + "s");
+                        if (j.Slno > 0)   // a reprint (slno 0) is not a server job
+                        {
+                            QFPrintService.QFPrintService obj = new QFPrintService.QFPrintService();
+                            obj.UpdatePOSForPrintingAsync(Program.CompanyID, Program.DivisionID, Program.DepartmentID, j.Slno);
+                        }
+                    }
+                    else if ((DateTime.Now - j.When).TotalMinutes > 60)
+                    {
+                        // Hour's up: the banner no longer counts it. Stop watching.
+                        SpoolWatch.Stop(j.Printer, j.Doc);
+                        pendingConfirm.RemoveAt(i);
+                    }
+                    continue;
+                }
+
                 if (outcome != null)
                 {
-                    SpoolWatch.Stop(j.Printer, j.Doc);
-                    pendingConfirm.RemoveAt(i);
                     j.Confirm = outcome;
                     j.Waiting = false;
                     changed = true;
@@ -1442,6 +1477,17 @@ namespace QuickfloraPrinting
                     {
                         QFPrintService.QFPrintService obj = new QFPrintService.QFPrintService();
                         obj.UpdatePOSForPrintingAsync(Program.CompanyID, Program.DivisionID, Program.DepartmentID, j.Slno);
+                    }
+                    if (outcome == "Printed")
+                    {
+                        SpoolWatch.Stop(j.Printer, j.Doc);
+                        pendingConfirm.RemoveAt(i);
+                    }
+                    else
+                    {
+                        // 6.1.2: keep the row and the SpoolWatch sighting going; if Windows later
+                        // finishes the job (paper added), the next tick upgrades it to Printed.
+                        j.NotPrintedReported = true;
                     }
                 }
             }
@@ -1504,10 +1550,13 @@ namespace QuickfloraPrinting
                     List<Sighting> list;
                     lock (Gate)
                     {
-                        // Drop anything watched for over 35 minutes; CheckPending has settled it by then.
+                        // 6.1.2 (AB#3958): drop anything watched for over 65 minutes. The hour mark
+                        // is the banner window — a Not-printed row that may still be upgraded to
+                        // Printed if Windows finishes it after paper is added. Beyond that CheckPending
+                        // has stopped watching anyway.
                         List<string> old = new List<string>();
                         foreach (KeyValuePair<string, Sighting> kv in Watched)
-                            if ((DateTime.Now - kv.Value.StartedAt).TotalMinutes > 35) old.Add(kv.Key);
+                            if ((DateTime.Now - kv.Value.StartedAt).TotalMinutes > 65) old.Add(kv.Key);
                         foreach (string k in old) Watched.Remove(k);
                         if (Watched.Count == 0) { running = false; return; }
                         list = new List<Sighting>(Watched.Values);
@@ -1861,6 +1910,10 @@ namespace QuickfloraPrinting
             public bool LastWasError;
             public int LastMask;          // 4.0.2: Windows job flags at the last fault, for the reason sent to the server
             public string Confirm;        // null (not tracked), "Printing", "Printed", "Not printed"
+            // 6.1.2 (AB#3958, Alex, 19 Oct 2026): once a row has been reported Not printed, we keep
+            // watching Windows' queue for up to 60 min. If paper is added and Windows finishes the
+            // job, we flip the row to Printed and clear the banner. Set only after the first report.
+            public bool NotPrintedReported;
             public double Seconds = -1;   // -1 = unknown (rows read back from the log)
 
             public string TookText

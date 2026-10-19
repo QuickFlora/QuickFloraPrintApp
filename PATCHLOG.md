@@ -2,6 +2,9 @@
 
 `date · AB#xxxx · client (CompanyID) · WEB/DB · R-level · downtime · patched by · rollback`
 
+- 2026-10-19 · AB#3170 · staging only (for AB#3995 wave-2 test) · WEB on WEB1TEST i-0367713c255aeb175 (QFReports_STG scripts\WTReportV2RetailUS.aspx.vb synced to live WEB1AWS copy, MD5 1cd334b8: adds b260c84 Sales Rep line + no wire-out section for 'Others'; Four Seasons 191095/191098/191102 render 200) · R1 · none · Claude for Alex · restore WTReportV2RetailUS.aspx.vb.20261019-1741.bak
+
+- 2026-10-19 · AB#3958 · QuickfloraDemo / LENOVO-i5 (Lenovo test PC only) · WEB (print app 6.1.2, Not-printed row flips to Printed when Windows prints it later; built on the PC with MSBuild from the branch zip in C:\QFPrintApp\v612-build) · R1 · app restart on that PC · Claude for Alex · C:\QFPrintApp\backup-6.1.1.0-AB3958test-20261019-0745
 - 2026-10-18 · AB#3958 · QuickfloraDemo / LENOVO-i5 (Lenovo test PC only) · WEB (print app 6.1.0 installed over 6.0.0 in C:\QFPrintApp\QuickfloraPrinting, pointed at WEB1TEST) · R1 · app restart on that PC · Claude for Alex · C:\QFPrintApp\backup-6.0.0.0-AB3958test-20261018-164430
 - 2026-10-18 · AB#3958 · QuickfloraDemo / LENOVO-i5 (Lenovo test PC only) · WEB (print app 6.1.1, Warm push handler, built on the PC with MSBuild from the branch zip in C:\QFPrintApp\v611-build) · R1 · app restart on that PC · Claude for Alex · C:\QFPrintApp\backup-6.1.0.0-AB3958test-20261018-1729
 - 2026-10-19 · AB#3958 · QuickfloraDemo (staging only) · WEB on WEB1TEST i-0367713c255aeb175 (staging print service NewPOSQFPrintWS App_Code Service.vb + clsAppPrinting.vb: report/receipt URLs prod -> web1test; QFReports_STG WTReportPrint/EnclosureCardReportPrint: QR image falls back to barcode; hosts 127.0.0.1 web1test.quickflora-dev.com; new D:\WebApps\QuickFloraFrontEnd\PDF + IIS vdirs /PDF and /FAX; placeholder D:\WebApps\QFreports\images\tiptonqr.png) · R1 · none · Claude for Alex · restore *.20261019-1417.bak (4 .vb + hosts), remove /PDF and /FAX vdirs
