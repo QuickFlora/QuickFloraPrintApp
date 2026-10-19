@@ -81,10 +81,20 @@ New-Item -ItemType Directory -Force $bk | Out-Null
 Get-ChildItem $dir -File | Copy-Item -Destination $bk
 'backup: ' + $bk + ' (' + (Get-ChildItem $bk).Count + ' files)'
 
-# 4. Replace the app (the user's copy is restarted by start-printapp-hub.ps1)
+# 4. Replace the app (the user's copy is restarted by start-printapp-hub.ps1). From here the shop is not
+#    printing, so ANY failure puts the backup back and says so - the caller then restarts the old app.
 Get-Process QuickfloraPrinting -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.Id -Force }
-Start-Sleep 2
-Copy-Item (Join-Path $unz '*') $dir -Recurse -Force
+for ($i = 0; $i -lt 20 -and (Get-Process QuickfloraPrinting -ErrorAction SilentlyContinue); $i++) { Start-Sleep 1 }
+$copied = $false
+for ($try = 1; $try -le 5 -and -not $copied; $try++) {
+    try { Copy-Item (Join-Path $unz '*') $dir -Recurse -Force -ErrorAction Stop; $copied = $true }
+    catch { 'copy attempt ' + $try + ' failed: ' + $_.Exception.Message; Start-Sleep 3 }
+}
+if (-not $copied) {
+    Get-ChildItem $bk -File | Copy-Item -Destination $dir -Force
+    'RESULT: FAILED-RESTORED - could not replace the app files; the old version ' + $old + ' was put back from ' + $bk + '. Start it as the user.'
+    exit 8
+}
 if ($oldEndpoint -or $oldSetting) {
     $t = Get-Content $xc -Raw
     if ($oldEndpoint) { $t = [regex]::Replace($t, '(<endpoint\s+address=")[^"]+(")', '${1}' + $oldEndpoint + '${2}') }
