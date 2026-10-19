@@ -19,6 +19,13 @@ namespace QuickfloraPrinting
         private bool startMinimized;
         private bool loadingSettings;
 
+        // AB#3958 (6.1.0): push mode. While the hub is connected no WaitForPrintJob/Ping is sent.
+        private EdgeHubClient edgeHub;
+        private bool hubMode;
+        private long pollCalls, pingCalls;                 // SOAP calls since the hub connected (evidence: must stay 0)
+        private readonly HashSet<long> seenHubSlnos = new HashSet<long>();   // dedupe when the edge store is off
+        private int hubReportTicks;
+
         // AB#3189 (v3.5) — screen state. Display only; the print loop does not read any of this.
         private string configPath = "";
         private DateTime pingStarted = DateTime.MinValue;
@@ -223,9 +230,9 @@ namespace QuickfloraPrinting
             if ((j.LastMask & 1024) != 0) return "printer needs attention";
             if ((j.LastMask & 2) != 0) return "printer error";
             if ((j.LastMask & 512) != 0) return "print queue blocked";
-            if (!j.Seen) return "no print job reached Windows within 2 minutes";
+            if (!j.Seen) return "no print job reached Windows within " + GiveUpSeconds + " seconds";
             if (j.LastWasError) return "removed from the Windows queue after an error";
-            if (age > 1800) return "still not printed after 30 minutes";
+            if (age > GiveUpSeconds) return "still not printed after " + GiveUpSeconds + " seconds";
             return "not confirmed";
         }
 
@@ -447,6 +454,110 @@ namespace QuickfloraPrinting
             timerMonitor.Interval = 30000;
             timerMonitor.Tick += delegate { MonitorBeat(); };
             timerMonitor.Enabled = true;
+
+            // AB#3963 (epic AB#3961): this PC's own SQLite store. Every job picked up is written there
+            // before it prints, so a crash mid-print leaves a record instead of a silently lost ticket;
+            // the hourly sync agent fills the reference cache once the server endpoints exist.
+            EdgeStore.Open(WriteToFile);
+            foreach (string[] j in EdgeStore.UnfinishedJobs())
+                WriteToFile("EDGE store: job slno=" + j[0] + " file=" + j[1] + " printer=" + j[2]
+                    + " received " + j[4] + " never finished on this PC (left open on the server, will be picked up again)");
+            EdgeSync.Start(WriteToFile);
+
+            // AB#3958 (6.1.0): push. Hub = print web service host + /edgehub; the hub pushes jobs, the
+            // app stops polling while it is connected and resumes the long-poll the moment it is not.
+            string hubUrl = EdgeHubClient.ResolveUrl(Properties.Settings.Default.QuickfloraPrinting_QFPrintService_QFPrintService);
+            if (hubUrl == null)
+            {
+                WriteToFile("HUB off (EdgeHubDisabled or no URL) - long-poll only, as 6.0.0");
+            }
+            else
+            {
+                string hubKey = EdgeHubClient.ResolveKey();
+                EdgeSync.Register(new CompaniesCacheSource(hubUrl, hubKey));
+                edgeHub = new EdgeHubClient(hubUrl, hubKey, WriteToFile);
+                edgeHub.ConnectedChanged += delegate (bool up) { Ui(delegate { OnHubConnected(up); }); };
+                edgeHub.JobReceived += delegate (EdgeHubClient.JobMessage j) { Ui(delegate { OnHubJob(j); }); };
+                edgeHub.Nudged += delegate (string reason) { WriteToFile("HUB nudge: " + reason); };
+                edgeHub.Alert += delegate (string text) { WriteToFile("HUB alert: " + text); ReportEvent("Hub alert", "", text); };
+                // 6.1.1: in push mode the warm-up (AB#3796) arrives from the hub instead of WaitForPrintJobOrWarm.
+                edgeHub.Warmed += delegate (string reason) { Ui(delegate { WriteToFile("HUB warm: " + reason); StartWarmUp(); }); };
+                edgeHub.Start();
+            }
+        }
+
+        // ==================== AB#3958 (6.1.0): push from qf-edge-hub ====================
+
+        private void OnHubConnected(bool up)
+        {
+            hubMode = up;
+            if (up)
+            {
+                pollCalls = 0; pingCalls = 0; hubReportTicks = 0;
+                timer1.Enabled = false;
+                // A long-poll already in flight is abandoned: its late answer is ignored (sender != pendingRequest).
+                QFPrintService.QFPrintService inflight = pendingRequest;
+                pendingRequest = null;
+                if (inflight != null) { try { inflight.Abort(); } catch { } }
+                lastPingOk = DateTime.Now; pingFailing = false; pingFailures = 0;
+                lblConn.ForeColor = Color.FromArgb(11, 90, 48);
+                lblConn.Text = "\u25CF  Connected \u00B7 push";
+                ShowCurrentStatus();
+                return;
+            }
+            // Hub gone: back to exactly the 6.0.0 behaviour (live pickup, 5-second ping fallback).
+            lblConn.Text = "\u25CF  Connected \u00B7 live";
+            timer1.Interval = 300;
+            timer1.Enabled = true;
+        }
+
+        /// <summary>A job the hub pushed for this terminal. Store it, claim it, print it - same path as a polled job.</summary>
+        private void OnHubJob(EdgeHubClient.JobMessage j)
+        {
+            if (j == null || j.Slno <= 0) return;
+            bool isNew;
+            if (EdgeStore.Enabled) isNew = EdgeStore.JobReceived(j.Slno, j.FileName, j.PrintText2, j.PrintText1);
+            else isNew = seenHubSlnos.Add(j.Slno);
+            if (!isNew)
+            {
+                WriteToFile("HUB job slno=" + j.Slno + " already on this PC - skipped");
+                return;
+            }
+            PrintTask t = new PrintTask();
+            t.Started = DateTime.Now;
+            t.PrintText = j.PrintText ?? "";
+            t.PrintText1 = j.PrintText1 ?? "";
+            t.FileName = j.FileName ?? "";
+            t.Slno = (int)j.Slno;
+            t.PrintText2 = InstalledPrinterFor(j.PrintText2 ?? "", t.Slno);
+            t.DefaultPrinter = txtdefaultprinter.Text;
+            // Claim it on the server exactly as CheckPOSForPrinting does ([Read]=0), so no other path takes it.
+            try
+            {
+                QFPrintService.QFPrintService claim = new QFPrintService.QFPrintService();
+                claim.UpdateReadPOSForPrintingAsync(Program.CompanyID, Program.DivisionID, Program.DepartmentID, t.Slno);
+            }
+            catch (Exception ex) { ReportError("OnHubJob.claim", "", ex); }
+            edgeHub.Claimed(j.Slno);
+            PrinterWorker w = WorkerFor(t.PrintText2);
+            // Server clock, not ours (the server runs on UTC, the shop PC on local time): the hub log has the push time.
+            WriteToFile("PICKUP slno=" + t.Slno + " file=" + t.FileName + " via hub queue=" + w.Pending
+                + (j.QueuedAt == DateTime.MinValue ? "" : " queued-on-server=" + j.QueuedAt.ToString("HH:mm:ss")));
+            lblprintrequest.Text = "New Print Request Found";
+            lblprintrequest.ForeColor = Color.Green;
+            lbltimer.Text = DateTime.Now.ToLongTimeString();
+            SetStatus("Printing", "Sending a receipt to " + t.PrintText2, false);
+            w.Enqueue(t);
+        }
+
+        /// <summary>One line a minute while in push mode - the proof that polling stopped.</summary>
+        private void HubReport()
+        {
+            if (!hubMode || edgeHub == null) return;
+            if (++hubReportTicks % 2 != 0) return;   // timerMonitor is 30 s
+            WriteToFile("HUB mode: connected since " + edgeHub.ConnectedSince.ToString("HH:mm:ss")
+                + " | WaitForPrintJob calls=" + pollCalls + " Ping calls=" + pingCalls + " since connect"
+                + " | jobs pushed=" + edgeHub.JobsPushed + " | drops=" + edgeHub.Drops);
         }
 
         private void MonitorBeat()
@@ -456,7 +567,8 @@ namespace QuickfloraPrinting
                 int notPrinted = 0;
                 foreach (JobRow j in jobs)
                     if ((j.Waiting || j.Confirm == "Not printed") && (DateTime.Now - j.When).TotalMinutes <= 60) notPrinted++;
-                PrintMonitor.Beat(!pingFailing && lastPingOk != DateTime.MinValue,
+                HubReport();
+                PrintMonitor.Beat(hubMode ? edgeHub.IsConnected : (!pingFailing && lastPingOk != DateTime.MinValue),
                     lastJob == null ? DateTime.MinValue : lastJob.When, pendingConfirm.Count, notPrinted,
                     txtdefaultprinter.Text.Trim(), monitorPrinters);
             }
@@ -482,6 +594,8 @@ namespace QuickfloraPrinting
         private void StartLiveWait()
         {
             timer1.Enabled = false;
+            if (hubMode) return;   // AB#3958: the hub pushes; nothing to ask
+            pollCalls++;
             pingStarted = DateTime.Now;
             QFPrintService.QFPrintService obj = new QFPrintService.QFPrintService();
             obj.Timeout = (LiveWaitSeconds + 20) * 1000;
@@ -533,6 +647,7 @@ namespace QuickfloraPrinting
             }
 
             NoteConnection(true);
+            if (hubMode) { lblConn.Text = "\u25CF  Connected \u00B7 push"; return; }   // AB#3958: late answer after the hub took over
             lblConn.Text = "\u25CF  Connected \u00B7 live";
             lbltimer.Text = DateTime.Now.ToLongTimeString();
             if (hasWork)
@@ -579,6 +694,7 @@ namespace QuickfloraPrinting
             }
 
             NoteConnection(true);
+            if (hubMode) { lblConn.Text = "\u25CF  Connected \u00B7 push"; return; }   // AB#3958
             lblConn.Text = "\u25CF  Connected \u00B7 live";
             lbltimer.Text = DateTime.Now.ToLongTimeString();
             if (answer == 1)
@@ -595,12 +711,14 @@ namespace QuickfloraPrinting
 
         private void timer1_Tick(object sender, EventArgs e)
         {
+            if (hubMode) { timer1.Enabled = false; return; }   // AB#3958: push mode, no polling
             if (useLivePickup) { StartLiveWait(); return; }
             PingNow();
         }
 
         private void PingNow()
         {
+            pingCalls++;
             lbltimer.Text = DateTime.Now.ToLongTimeString() ; 
  
             pingStarted = DateTime.Now;
@@ -714,6 +832,8 @@ namespace QuickfloraPrinting
                 if (t.Slno > 0)
                 {
                     WriteToFile("NOT PRINTED slno=" + t.Slno + " file=" + t.FileName + " - left open on the server");
+                    EdgeStore.JobReceived(t.Slno, t.FileName, t.PrintText2, t.PrintText1);
+                    EdgeStore.JobDone(t.Slno, false, "job could not be read from the server reply");   // AB#3963
                     timer1.Enabled = true;
                     return;
                 }
@@ -728,6 +848,7 @@ namespace QuickfloraPrinting
             // AB#3163: when the job reached this PC, and how (live pickup or 5-second check).
             // 5.0.7: queue = jobs already waiting for the same printer.
             WriteToFile("PICKUP slno=" + t.Slno + " file=" + t.FileName + " via " + (useLivePickup ? "live" : "poll") + " queue=" + w.Pending);
+            EdgeStore.JobReceived(t.Slno, t.FileName, t.PrintText2, t.PrintText1);   // AB#3963: durable local copy first
             w.Enqueue(t);
             timer1.Enabled = true;   // ask for the next job now, while this one prints
         }
@@ -1246,8 +1367,12 @@ namespace QuickfloraPrinting
         ///  gone after being seen without an error = printed (Windows deletes printed jobs).
         /// A raw receipt can print and vanish before we look, so after 10 s unseen it counts as
         /// printed if its printer shows no fault. A PDF is spooled by Adobe, which can fail silently,
-        /// so unseen after 2 minutes it is NOT printed.
+        /// so unseen after GiveUpSeconds it is NOT printed.
+        /// 6.0.0 (Alex, 18 Oct 2026): a work ticket or card that has not printed after 60 s is reported
+        /// as not printed - never 30 minutes. The Windows job may still print later (paper added); the
+        /// shop has already been told.
         /// </summary>
+        private const int GiveUpSeconds = 60;
         private void CheckPending(List<SpoolJob> queue)
         {
             if (queue == null) return;   // WMI failed this time; try again next tick
@@ -1291,9 +1416,9 @@ namespace QuickfloraPrinting
                     outcome = j.LastWasError ? "Not printed" : "Printed";
                 }
                 else if (j.Doc == "QuickFlora-Print" && age > 10 && !PrinterHasFault(j.Printer)) outcome = "Printed";
-                else if (age > 120) outcome = "Not printed";
+                else if (age > GiveUpSeconds) outcome = "Not printed";
 
-                if (age > 1800 && outcome == null) outcome = "Not printed";   // stop watching after 30 min
+                if (age > GiveUpSeconds && outcome == null) outcome = "Not printed";   // stop watching: the shop must know within a minute
 
                 if (outcome != null)
                 {
@@ -1311,6 +1436,8 @@ namespace QuickfloraPrinting
                     if (outcome != "Printed")
                         ReportEvent("Not printed", j.File, "slno=" + j.Slno + " | printer=" + j.Printer + " | form=" + j.Form
                             + " | reason=" + NotPrintedReason(j, age) + " | after=" + age.ToString("0") + "s");
+                    EdgeStore.JobDone(j.Slno, outcome == "Printed",
+                        outcome == "Printed" ? "after " + age.ToString("0") + "s" : NotPrintedReason(j, age));   // AB#3963
                     if (outcome == "Printed" && j.Slno > 0)   // a reprint (slno 0) is not a server job
                     {
                         QFPrintService.QFPrintService obj = new QFPrintService.QFPrintService();
@@ -2045,6 +2172,7 @@ namespace QuickfloraPrinting
         /// <summary>The status card, worst problem first.</summary>
         private void ShowCurrentStatus()
         {
+            if (hubMode && pingFailing) { pingFailing = false; pingFailures = 0; }   // AB#3958: the hub is the connection now
             if (pingFailing)
             {
                 SetStatus("Can't reach QuickFlora",

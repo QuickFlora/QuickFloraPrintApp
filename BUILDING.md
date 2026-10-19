@@ -13,6 +13,33 @@ C:\Windows\Microsoft.NET\Framework64\v4.0.30319\MSBuild.exe QuickfloraPrinting.s
 Output lands in `QuickfloraPrinting\bin\Release\`. `GenerateSerializationAssemblies=Off` is needed on
 WEB1STG because `sgen.exe` is not installed there; it is harmless everywhere else.
 
+### The edge store (6.0.0, AB#3963)
+
+The app keeps its own SQLite store at `C:\QFPrintApp\edge\edge.db` (see `EdgeStore.cs`). SQLite is
+embedded, not installed: `lib\System.Data.SQLite.dll` (managed, from NuGet
+`Stub.System.Data.SQLite.Core.NetFramework` 1.0.119, `lib\net46`) plus the native engine
+`lib\x86\SQLite.Interop.dll` and `lib\x64\SQLite.Interop.dll` (same package, `build\net46`). The
+project copies the two native DLLs to `bin\Release\x86` and `\x64`; System.Data.SQLite picks the right
+one at run time, so the app stays Any CPU. The installer ships all three. No NuGet restore is needed —
+the DLLs are checked in like `Microsoft.VisualBasic.PowerPacks.Vs.dll`.
+
+Kill switch on a PC: `HKCU\Software\QuickfloraPrinting\EdgeStoreDisabled` = 1 (DWORD), then restart
+the app. Delete `C:\QFPrintApp\edge\` to start the store from empty.
+
+### The push client (6.1.0, AB#3958)
+
+`EdgeHubClient.cs` keeps one SignalR connection to **qf-edge-hub** (repo `QuickFlora/qf-edge-hub`) at
+`<print web service host>/edgehub`. The client library is vendored like SQLite: `lib\Microsoft.AspNet.SignalR.Client.dll`
+(NuGet `Microsoft.AspNet.SignalR.Client` 2.4.3, `lib\net45`) and `lib\Newtonsoft.Json.dll` (NuGet
+`Newtonsoft.Json` 13.0.4, `lib\net45`), both verified on nuget.org 2026-10-18. No NuGet restore.
+While the hub is connected the app sends no WaitForPrintJob / PingPOSForPrinting at all (the log line
+`HUB mode: ... WaitForPrintJob calls=0 Ping calls=0` once a minute is the proof); when the hub is
+unreachable the app behaves exactly as 6.0.0. 6.1.1: the hub can also push `Warm` (the print web service forwards
+its AB#3796 warm-up signal to the hub's `signal.ashx`), which runs the same `StartWarmUp` the long-poll answer runs. Registry (HKCU\Software\QuickfloraPrinting):
+`EdgeHubDisabled` = 1 turns push off, `EdgeHubUrl` overrides the hub address, `EdgeHubKey` is the
+shared key when the hub requires one. `CompaniesCacheSource.cs` is the first EdgeSync source; it pulls
+from the hub's `cache.ashx`.
+
 ## Building the installer
 
 The installer is an [Inno Setup](https://jrsoftware.org/isdl.php) script at
