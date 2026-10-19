@@ -1786,7 +1786,7 @@ namespace QuickfloraPrinting
                 sb.AppendLine("Generated : " + DateTime.Now.ToString("dd MMM yyyy h:mm:ss tt"));
                 sb.AppendLine("Version   : " + Application.ProductVersion);
                 sb.AppendLine("Machine   : " + Environment.MachineName);
-                sb.AppendLine("Windows   : " + Environment.OSVersion.VersionString);
+                sb.AppendLine("Windows   : " + PrintMonitor.WindowsVersion());
                 sb.AppendLine();
                 sb.AppendLine("Company   : " + txtcmp.Text);
                 sb.AppendLine("Division  : " + txtDivision.Text);

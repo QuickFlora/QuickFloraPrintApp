@@ -108,7 +108,7 @@ namespace QuickfloraPrinting
             string body = "{" + J("company_id", Program.CompanyID) + "," + J("division_id", Program.DivisionID)
                 + "," + J("department_id", Program.DepartmentID) + "," + J("machine_name", Environment.MachineName)
                 + "," + J("terminal_name", Program.TerminalName) + "," + J("app_version", Program.AppVersion.TrimStart('v'))
-                + "," + J("os_version", Environment.OSVersion.VersionString) + "," + J("default_printer", defaultPrinter)
+                + "," + J("os_version", WindowsVersion()) + "," + J("default_printer", defaultPrinter)
                 + ",\"heartbeat\":" + heartbeat
                 + (printersJson == null ? "" : ",\"printers\":" + printersJson)
                 + ",\"jobs\":[" + string.Join(",", j.ToArray()) + "]"
@@ -252,6 +252,47 @@ namespace QuickfloraPrinting
                 }
             }
             return sb.Append("]").ToString();
+        }
+
+        private static string windowsVersion;
+
+        /// <summary>
+        /// AB#3983: the real Windows version, e.g. "Microsoft Windows 11 Pro 24H2 (build 26100)".
+        /// Environment.OSVersion says "NT 6.2.9200" on Windows 10 and 11 (no compatibility manifest), and
+        /// the registry ProductName still says "Windows 10" on Windows 11, so the build number decides.
+        /// </summary>
+        public static string WindowsVersion()
+        {
+            if (windowsVersion != null) return windowsVersion;
+            string result = Environment.OSVersion.VersionString;
+            try
+            {
+                using (Microsoft.Win32.RegistryKey hklm = Microsoft.Win32.RegistryKey.OpenBaseKey(Microsoft.Win32.RegistryHive.LocalMachine, Microsoft.Win32.RegistryView.Registry64))
+                using (Microsoft.Win32.RegistryKey k = hklm.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion"))
+                {
+                    if (k != null)
+                    {
+                        string product = Convert.ToString(k.GetValue("ProductName") ?? "").Trim();
+                        string display = Convert.ToString(k.GetValue("DisplayVersion") ?? k.GetValue("ReleaseId") ?? "").Trim();
+                        int build;
+                        int.TryParse(Convert.ToString(k.GetValue("CurrentBuildNumber") ?? k.GetValue("CurrentBuild") ?? ""), out build);
+                        object major = k.GetValue("CurrentMajorVersionNumber");
+                        if (major != null && Convert.ToInt32(major) >= 10 && build > 0)
+                        {
+                            string name = build >= 22000 ? "Windows 11" : "Windows 10";
+                            string edition = product.StartsWith("Windows 1") && product.Length > 10 ? product.Substring(10).Trim() : product;
+                            result = "Microsoft " + name + (edition.Length > 0 ? " " + edition : "") + (display.Length > 0 ? " " + display : "") + " (build " + build + ")";
+                        }
+                        else if (product.Length > 0)
+                        {
+                            result = "Microsoft " + product + (build > 0 ? " (build " + build + ")" : "");
+                        }
+                    }
+                }
+            }
+            catch { }
+            windowsVersion = result;
+            return result;
         }
 
         private static string Iso(DateTime t)
