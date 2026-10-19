@@ -34,7 +34,8 @@ the app. Delete `C:\QFPrintApp\edge\` to start the store from empty.
 `Newtonsoft.Json` 13.0.4, `lib\net45`), both verified on nuget.org 2026-10-18. No NuGet restore.
 While the hub is connected the app sends no WaitForPrintJob / PingPOSForPrinting at all (the log line
 `HUB mode: ... WaitForPrintJob calls=0 Ping calls=0` once a minute is the proof); when the hub is
-unreachable the app behaves exactly as 6.0.0. Registry (HKCU\Software\QuickfloraPrinting):
+unreachable the app behaves exactly as 6.0.0. 6.1.1: the hub can also push `Warm` (the print web service forwards
+its AB#3796 warm-up signal to the hub's `signal.ashx`), which runs the same `StartWarmUp` the long-poll answer runs. Registry (HKCU\Software\QuickfloraPrinting):
 `EdgeHubDisabled` = 1 turns push off, `EdgeHubUrl` overrides the hub address, `EdgeHubKey` is the
 shared key when the hub requires one. `CompaniesCacheSource.cs` is the first EdgeSync source; it pulls
 from the hub's `cache.ashx`.

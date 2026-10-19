@@ -480,6 +480,8 @@ namespace QuickfloraPrinting
                 edgeHub.JobReceived += delegate (EdgeHubClient.JobMessage j) { Ui(delegate { OnHubJob(j); }); };
                 edgeHub.Nudged += delegate (string reason) { WriteToFile("HUB nudge: " + reason); };
                 edgeHub.Alert += delegate (string text) { WriteToFile("HUB alert: " + text); ReportEvent("Hub alert", "", text); };
+                // 6.1.1: in push mode the warm-up (AB#3796) arrives from the hub instead of WaitForPrintJobOrWarm.
+                edgeHub.Warmed += delegate (string reason) { Ui(delegate { WriteToFile("HUB warm: " + reason); StartWarmUp(); }); };
                 edgeHub.Start();
             }
         }

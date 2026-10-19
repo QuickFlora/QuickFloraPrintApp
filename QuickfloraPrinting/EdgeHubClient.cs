@@ -48,6 +48,8 @@ namespace QuickfloraPrinting
         public event Action<JobMessage> JobReceived;
         public event Action<string> Nudged;
         public event Action<string> Alert;
+        /// <summary>6.1.1 (AB#3796 in push mode): someone started an order on this terminal - wake the printers.</summary>
+        public event Action<string> Warmed;
         /// <summary>true = push is live (polling must stop); false = hub gone (polling must run).</summary>
         public event Action<bool> ConnectedChanged;
 
@@ -129,6 +131,7 @@ namespace QuickfloraPrinting
                 h.On<JobMessage>("Job", OnJob);
                 h.On<string>("Nudge", delegate (string reason) { if (Nudged != null) Nudged(reason); });
                 h.On<string>("Alert", delegate (string text) { if (Alert != null) Alert(text); });
+                h.On<string>("Warm", delegate (string reason) { if (Warmed != null) Warmed(reason); });
                 h.On<string>("Reject", delegate (string why) { log("HUB rejected this PC: " + why); });
                 c.StateChanged += OnStateChanged;
                 c.Closed += OnClosed;
