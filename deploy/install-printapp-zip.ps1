@@ -58,6 +58,23 @@ if (Test-Path $unz) { Remove-Item $unz -Recurse -Force }
 Expand-Archive $zip -DestinationPath $unz -Force
 if (Test-Path (Join-Path $unz 'Config.txt')) { Remove-Item (Join-Path $unz 'Config.txt') -Force }
 
+# 2b. Shop may be open: never stop the app right after it picked up a ticket (a ticket taken off the
+#     server but not yet printed would be lost). Wait until no PICKUP for 90 s; give up after 5 min.
+$log = Join-Path $dir ('Logs\AppLog_' + (Get-Date -Format 'yyyy_MM_dd') + '.txt')
+$deadline = (Get-Date).AddMinutes(5)
+while ($true) {
+    $lastPick = $null
+    if (Test-Path $log) {
+        $l = Get-Content $log -Tail 300 | Where-Object { $_ -cmatch '^\d\d:\d\d:\d\d  PICKUP ' } | Select-Object -Last 1
+        if ($l) { $lastPick = [datetime]::ParseExact((Get-Date -Format 'yyyy-MM-dd') + ' ' + $l.Substring(0, 8), 'yyyy-MM-dd HH:mm:ss', $null) }
+    }
+    $quiet = if ($lastPick) { ((Get-Date) - $lastPick).TotalSeconds } else { 9999 }
+    if ($quiet -ge 90) { 'quiet for ' + [int]$quiet + ' s - safe to restart'; break }
+    if ((Get-Date) -gt $deadline) { 'STOP: still printing after 5 minutes (last pickup ' + [int]$quiet + ' s ago). Nothing was changed - try again later.'; Remove-Item $work -Recurse -Force; exit 7 }
+    'printing right now (last pickup ' + [int]$quiet + ' s ago) - waiting'
+    Start-Sleep 15
+}
+
 # 3. Back up the current app (files only; Logs stay where they are)
 $bk = 'C:\QFPrintApp\backup-' + ($old -replace '[^0-9.]', '') + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
 New-Item -ItemType Directory -Force $bk | Out-Null
