@@ -2423,15 +2423,22 @@ namespace QuickfloraPrinting
             try
             {
                 int me = Process.GetCurrentProcess().Id;
-                foreach (Process p in Process.GetProcessesByName("QuickfloraPrinting"))
+                // 6.1.3: WMI instead of Process.MainModule. This app runs 32-bit and MainModule cannot read a 64-bit
+                // copy, which then looked like "another Windows user's session" (Lenovo test, 23 Oct 2026).
+                using (ManagementObjectSearcher s = new ManagementObjectSearcher(
+                    "SELECT ProcessId, ExecutablePath, SessionId FROM Win32_Process WHERE Name='QuickfloraPrinting.exe'"))
                 {
-                    if (p.Id == me) continue;
-                    string where, ver;
-                    try { where = p.MainModule.FileName; ver = p.MainModule.FileVersionInfo.FileVersion; }
-                    catch { where = "another Windows user's session"; ver = "unknown"; }   // no access to other users' processes
-                    if (string.IsNullOrEmpty(ver)) ver = "unknown";
-                    result.Add(where + " v" + ver + " (session " + p.SessionId + ")");
-                    versions.Add(ver);
+                    foreach (ManagementObject p in s.Get())
+                    {
+                        if (Convert.ToInt32(p["ProcessId"]) == me) continue;
+                        string where = Convert.ToString(p["ExecutablePath"]);
+                        string ver = "unknown";
+                        if (where.Length == 0) where = "another Windows user's session";   // no access to other users' processes
+                        else { try { ver = FileVersionInfo.GetVersionInfo(where).FileVersion; } catch { } }
+                        if (string.IsNullOrEmpty(ver)) ver = "unknown";
+                        result.Add(where + " v" + ver + " (session " + Convert.ToString(p["SessionId"]) + ")");
+                        versions.Add(ver);
+                    }
                 }
             }
             catch { }
