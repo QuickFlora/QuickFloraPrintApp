@@ -602,12 +602,12 @@ namespace QuickfloraPrinting
             if (useWarmWait)
             {
                 obj.WaitForPrintJobOrWarmCompleted += new QFPrintService.WaitForPrintJobOrWarmCompletedEventHandler(obj_WaitForPrintJobOrWarmCompleted);
-                pendingRequest = obj; pendingSince = DateTime.Now;   // 5.0.3 watchdog
+                pendingRequest = obj; pendingSince = DateTime.Now; pendingCall = "WaitForPrintJobOrWarm";   // 5.0.3 watchdog
                 obj.WaitForPrintJobOrWarmAsync(Program.CompanyID, Program.DivisionID, Program.DepartmentID, Program.TerminalName, LiveWaitSeconds);
                 return;
             }
             obj.WaitForPrintJobCompleted += new QFPrintService.WaitForPrintJobCompletedEventHandler(obj_WaitForPrintJobCompleted);
-            pendingRequest = obj; pendingSince = DateTime.Now;   // 5.0.3 watchdog
+            pendingRequest = obj; pendingSince = DateTime.Now; pendingCall = "WaitForPrintJob";   // 5.0.3 watchdog
             obj.WaitForPrintJobAsync(Program.CompanyID, Program.DivisionID, Program.DepartmentID, Program.TerminalName, LiveWaitSeconds);
         }
 
@@ -724,7 +724,7 @@ namespace QuickfloraPrinting
             pingStarted = DateTime.Now;
             QFPrintService.QFPrintService obj = new QFPrintService.QFPrintService();
             obj.PingPOSForPrintingCompleted += new QFPrintService.PingPOSForPrintingCompletedEventHandler(obj_PingPOSForPrintingCompleted);
-            pendingRequest = obj; pendingSince = DateTime.Now;   // 5.0.3 watchdog
+            pendingRequest = obj; pendingSince = DateTime.Now; pendingCall = "PingPOSForPrinting";   // 5.0.3 watchdog
             obj.PingPOSForPrintingAsync(Program.CompanyID, Program.DivisionID, Program.DepartmentID, Program.TerminalName );
             timer1.Enabled = false;
          
@@ -791,6 +791,10 @@ namespace QuickfloraPrinting
 
             QFPrintService.QFPrintService obj = new QFPrintService.QFPrintService();
             obj.CheckPOSForPrintingCompleted += new QFPrintService.CheckPOSForPrintingCompletedEventHandler(obj_CheckPOSForPrintingCompleted);
+            // 6.1.3 (AB#4157): watched like the wait and the ping. Until 6.1.1 a job fetch that never answered
+            // left timer1 off with nothing for the watchdog to see, so the app stopped collecting jobs until it
+            // was restarted (Berkeley BFS-HP-1, 20 Oct 2026 13:14-14:37 ET: 23 jobs printed 84 min late).
+            pendingRequest = obj; pendingSince = DateTime.Now; pendingCall = "CheckPOSForPrinting";
             obj.CheckPOSForPrintingAsync(Program.CompanyID, Program.DivisionID, Program.DepartmentID, Program.TerminalName);
 
 
@@ -798,6 +802,8 @@ namespace QuickfloraPrinting
 
         void obj_CheckPOSForPrintingCompleted(object sender, QFPrintService.CheckPOSForPrintingCompletedEventArgs e)
         {
+            if (sender != pendingRequest) return;   // 6.1.3: a fetch the watchdog already gave up on
+            pendingRequest = null; pendingCall = "";
             DataTable objDataTable = new DataTable();
 
             try
@@ -840,6 +846,7 @@ namespace QuickfloraPrinting
                 // Same as before 5.0.7 when nothing could be read: let the server move on.
                 QFPrintService.QFPrintService upd = new QFPrintService.QFPrintService();
                 upd.UpdatePOSForPrintingCompleted += new QFPrintService.UpdatePOSForPrintingCompletedEventHandler(obj_UpdatePOSForPrintingCompleted);
+                pendingRequest = upd; pendingSince = DateTime.Now; pendingCall = "UpdatePOSForPrinting";   // 6.1.3: watched too
                 upd.UpdatePOSForPrintingAsync(Program.CompanyID, Program.DivisionID, Program.DepartmentID, t.Slno);
                 return;
             }
@@ -1314,6 +1321,8 @@ namespace QuickfloraPrinting
 
         void obj_UpdatePOSForPrintingCompleted(object sender, QFPrintService.UpdatePOSForPrintingCompletedEventArgs e)
         {
+            if (sender != pendingRequest) return;   // 6.1.3: the watchdog already restarted pickup
+            pendingRequest = null; pendingCall = "";
             lblprintfile.Text = lblprintfile.Text + "\r\n" + "3.Print Completed.";
             timer1.Enabled = true;
         }
@@ -2269,8 +2278,10 @@ namespace QuickfloraPrinting
         }
 
         // 5.0.3: the pickup request (live wait or 5-second ping) that has not answered yet, and since when.
+        // 6.1.3 (AB#4157): also the job fetch (CheckPOSForPrinting) and its UpdatePOSForPrinting fallback.
         private QFPrintService.QFPrintService pendingRequest;
         private DateTime pendingSince;
+        private string pendingCall = "";   // 6.1.3: which call, for the log
 
         /// <summary>
         /// 5.0.3: asynchronous web requests ignore their Timeout, so a request the network drops without an
@@ -2285,9 +2296,10 @@ namespace QuickfloraPrinting
                 if (pendingRequest == null || (DateTime.Now - pendingSince).TotalSeconds < 90) return;
                 QFPrintService.QFPrintService stuck = pendingRequest;
                 pendingRequest = null;   // its late answer, if any, is now ignored
-                WriteToFile("PICKUP: no answer from QuickFlora for " + (DateTime.Now - pendingSince).TotalSeconds.ToString("0") + " s - asking again");
+                WriteToFile("PICKUP: no answer from QuickFlora for " + (DateTime.Now - pendingSince).TotalSeconds.ToString("0") + " s"
+                    + (pendingCall.Length > 0 ? " (" + pendingCall + ")" : "") + " - asking again");
                 ReportEvent("Pickup restarted", "", "pc=" + Environment.MachineName + " | mode=" + (useLivePickup ? "live" : "poll")
-                    + " | waited=" + (DateTime.Now - pendingSince).TotalSeconds.ToString("0") + "s");
+                    + " | call=" + pendingCall + " | waited=" + (DateTime.Now - pendingSince).TotalSeconds.ToString("0") + "s");
                 try { stuck.Abort(); } catch { }
                 NoteConnection(false);
                 ShowCurrentStatus();
@@ -2307,6 +2319,7 @@ namespace QuickfloraPrinting
             public string Ip = "";
             public string Rmm = "";
             public List<string> OtherCopies = new List<string>();   // AB#3384: other print-app copies running
+            public List<string> OtherVersions = new List<string>(); // 6.1.3 (AB#4157): their versions, same order
             public bool? ShiftOpen;                                  // AB#3399: null = could not ask the server
         }
 
@@ -2394,7 +2407,7 @@ namespace QuickfloraPrinting
             }
 
             h.Rmm = RmmState();
-            h.OtherCopies = OtherCopies();
+            h.OtherCopies = OtherCopies(h.OtherVersions);
             h.ShiftOpen = ShiftOpenHere();
             return h;
         }
@@ -2404,19 +2417,28 @@ namespace QuickfloraPrinting
         /// an older version (or one in another folder) can, and then two copies serve one terminal
         /// (Berkeley BFS-HP-6, 8 Oct 2026: an old copy in bin\Release beside the real one).
         /// </summary>
-        private static List<string> OtherCopies()
+        private static List<string> OtherCopies(List<string> versions)
         {
             List<string> result = new List<string>();
             try
             {
                 int me = Process.GetCurrentProcess().Id;
-                foreach (Process p in Process.GetProcessesByName("QuickfloraPrinting"))
+                // 6.1.3: WMI instead of Process.MainModule. This app runs 32-bit and MainModule cannot read a 64-bit
+                // copy, which then looked like "another Windows user's session" (Lenovo test, 23 Oct 2026).
+                using (ManagementObjectSearcher s = new ManagementObjectSearcher(
+                    "SELECT ProcessId, ExecutablePath, SessionId FROM Win32_Process WHERE Name='QuickfloraPrinting.exe'"))
                 {
-                    if (p.Id == me) continue;
-                    string where;
-                    try { where = p.MainModule.FileName; }
-                    catch { where = "another Windows user's session"; }   // no access to other users' processes
-                    result.Add(where + " (session " + p.SessionId + ")");
+                    foreach (ManagementObject p in s.Get())
+                    {
+                        if (Convert.ToInt32(p["ProcessId"]) == me) continue;
+                        string where = Convert.ToString(p["ExecutablePath"]);
+                        string ver = "unknown";
+                        if (where.Length == 0) where = "another Windows user's session";   // no access to other users' processes
+                        else { try { ver = FileVersionInfo.GetVersionInfo(where).FileVersion; } catch { } }
+                        if (string.IsNullOrEmpty(ver)) ver = "unknown";
+                        result.Add(where + " v" + ver + " (session " + Convert.ToString(p["SessionId"]) + ")");
+                        versions.Add(ver);
+                    }
                 }
             }
             catch { }
@@ -2648,13 +2670,7 @@ namespace QuickfloraPrinting
                 // could not be asked, keep what it was (hidden until the first answer).
                 if (h.ShiftOpen.HasValue && btnTestDrawer.Visible != h.ShiftOpen.Value) btnTestDrawer.Visible = h.ShiftOpen.Value;
                 otherCopies = h.OtherCopies;
-                string copies = string.Join("; ", h.OtherCopies.ToArray());
-                if (copies != reportedCopies)
-                {
-                    if (copies.Length > 0)
-                        ReportEvent("Two print apps running", "", "pc=" + Environment.MachineName + " | also running=" + copies);
-                    reportedCopies = copies;
-                }
+                ReportOtherCopies(h);
                 bool changed = false;
                 foreach (JobRow j in jobs)
                 {
@@ -2722,6 +2738,42 @@ namespace QuickfloraPrinting
 
         private List<string> otherCopies = new List<string>();
         private string reportedCopies = "";
+        private DateTime copiesSince = DateTime.MinValue;       // 6.1.3: first health check that saw another copy
+        private DateTime copiesReportedAt = DateTime.MinValue;  // 6.1.3: last "More than one print app" sent
+
+        /// <summary>
+        /// 6.1.3 (AB#4157): tells the server (POSPrintAppError) when this PC runs more than one copy of the print
+        /// app, which the POSN Alerts bell shows to the shop. Until 6.1.2 "Two print apps running" was sent the
+        /// moment another copy was seen, so our own upgrades raised it (the old copy still closing). Now: only
+        /// once another copy has been there for 2 minutes, again every hour while it lasts or when the set of
+        /// copies changes, and "One print app running again" when it clears so the bell drops it at once.
+        /// </summary>
+        private void ReportOtherCopies(HealthInfo h)
+        {
+            string copies = string.Join("; ", h.OtherCopies.ToArray());
+            if (copies.Length == 0)
+            {
+                if (copiesReportedAt != DateTime.MinValue)
+                    ReportEvent("One print app running again", "", "pc=" + Environment.MachineName + " | count=1");
+                copiesSince = DateTime.MinValue;
+                copiesReportedAt = DateTime.MinValue;
+                reportedCopies = "";
+                return;
+            }
+            if (copiesSince == DateTime.MinValue) copiesSince = DateTime.Now;
+            if ((DateTime.Now - copiesSince).TotalSeconds < 120) return;
+            if (copiesReportedAt != DateTime.MinValue && copies == reportedCopies
+                && (DateTime.Now - copiesReportedAt).TotalMinutes < 60) return;
+            List<string> versions = new List<string>();
+            versions.Add(Program.AppVersion.TrimStart('v'));
+            versions.AddRange(h.OtherVersions);
+            ReportEvent("More than one print app", "", "pc=" + Environment.MachineName + " | count=" + versions.Count
+                + " | versions=" + string.Join(", ", versions.ToArray()) + " | also running=" + copies + " | source=app");
+            WriteToFile("COPIES: " + versions.Count + " print apps running on this PC (" + string.Join(", ", versions.ToArray())
+                + ") - reported to QuickFlora");
+            copiesReportedAt = DateTime.Now;
+            reportedCopies = copies;
+        }
         private string reportedProblem;                 // "printer|state" last sent to the server, null when fine
         private string reportedProblemPrinter;
         private DateTime problemSince;
